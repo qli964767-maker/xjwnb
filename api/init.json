@@ -1,0 +1,252 @@
+{
+  "homeInfo": {
+    "title": "首页",
+    "href": "page/home.html",
+    "icon": "fa fa-home"
+  },
+  "logoInfo": {
+    "title": "UOLab 库存管理平台",
+    "image": "images/logo.png",
+    "href": "page/home.html"
+  },
+  "menuInfo": [
+    {
+      "title": "常规管理",
+      "icon": "fa fa-cubes",
+      "href": "",
+      "target": "_self",
+      "child": [
+        {
+          "title": "首页",
+          "href": "page/home.html",
+          "icon": "fa fa-dashboard",
+          "target": "_self"
+        },
+        {
+          "title": "库存基础",
+          "href": "",
+          "icon": "fa fa-database",
+          "target": "_self",
+          "child": [
+            {
+              "title": "化妆品信息录入",
+              "href": "化妆品信息录入.html",
+              "icon": "fa fa-plus-square-o",
+              "target": "_self"
+            },
+            {
+              "title": "化妆品信息查询",
+              "href": "化妆品信息查询.html",
+              "icon": "fa fa-search",
+              "target": "_self"
+            },
+            {
+              "title": "化妆品信息修改",
+              "href": "化妆品信息修改.html",
+              "icon": "fa fa-pencil-square-o",
+              "target": "_self"
+            },
+            {
+              "title": "化妆品信息删除",
+              "href": "化妆品信息删除.html",
+              "icon": "fa fa-trash-o",
+              "target": "_self"
+            }
+          ]
+        },
+        {
+          "title": "库存变动",
+          "href": "",
+          "icon": "fa fa-exchange",
+          "target": "_self",
+          "child": [
+            {
+              "title": "入库登记与审核",
+              "href": "入库登记与审核.html",
+              "icon": "fa fa-arrow-circle-down",
+              "target": "_self"
+            },
+            {
+              "title": "出库登记与审核",
+              "href": "出库登记与审核.html",
+              "icon": "fa fa-arrow-circle-up",
+              "target": "_self"
+            },
+            {
+              "title": "库存调拨处理",
+              "href": "库存调拨处理.html",
+              "icon": "fa fa-exchange",
+              "target": "_self"
+            },
+            {
+              "title": "库存盘点记录",
+              "href": "库存盘点记录.html",
+              "icon": "fa fa-list-alt",
+              "target": "_self"
+            }
+          ]
+        },
+        {
+          "title": "采购",
+          "href": "",
+          "icon": "fa fa-shopping-cart",
+          "target": "_self",
+          "child": [
+            {
+              "title": "采购需求生成",
+              "href": "采购需求生成.html",
+              "icon": "fa fa-file-text-o",
+              "target": "_self"
+            },
+            {
+              "title": "采购订单创建",
+              "href": "采购订单创建.html",
+              "icon": "fa fa-file-text",
+              "target": "_self"
+            },
+            {
+              "title": "采购订单跟踪",
+              "href": "采购订单跟踪.html",
+              "icon": "fa fa-truck",
+              "target": "_self"
+            },
+            {
+              "title": "供应商信息管理",
+              "href": "供应商信息管理.html",
+              "icon": "fa fa-building-o",
+              "target": "_self"
+            }
+          ]
+        },
+        {
+          "title": "销售关联",
+          "href": "",
+          "icon": "fa fa-line-chart",
+          "target": "_self",
+          "child": [
+            {
+              "title": "销售订单同步",
+              "href": "销售订单同步.html",
+              "icon": "fa fa-refresh",
+              "target": "_self"
+            },
+            {
+              "title": "缺货预警触发",
+              "href": "缺货预警触发.html",
+              "icon": "fa fa-exclamation-triangle",
+              "target": "_self"
+            },
+            {
+              "title": "热销品库存监控",
+              "href": "热销品库存监控.html",
+              "icon": "fa fa-fire",
+              "target": "_self"
+            },
+            {
+              "title": "销售退货库存处理",
+              "href": "销售退货库存处理.html",
+              "icon": "fa fa-reply",
+              "target": "_self"
+            }
+          ]
+        },
+        {
+          "title": "库存预警",
+          "href": "",
+          "icon": "fa fa-bell-o",
+          "target": "_self",
+          "child": [
+            {
+              "title": "最低库存阈值设置",
+              "href": "最低库存阈值设置.html",
+              "icon": "fa fa-sliders",
+              "target": "_self"
+            },
+            {
+              "title": "临期产品预警",
+              "href": "临期产品预警.html",
+              "icon": "fa fa-calendar-times-o",
+              "target": "_self"
+            },
+            {
+              "title": "库存积压预警",
+              "href": "库存积压预警.html",
+              "icon": "fa fa-stack-overflow",
+              "target": "_self"
+            },
+            {
+              "title": "预警信息推送",
+              "href": "预警信息推送.html",
+              "icon": "fa fa-paper-plane-o",
+              "target": "_self"
+            }
+          ]
+        },
+        {
+          "title": "报表统计分析",
+          "href": "",
+          "icon": "fa fa-bar-chart",
+          "target": "_self",
+          "child": [
+            {
+              "title": "库存数量统计报表",
+              "href": "库存数量统计报表.html",
+              "icon": "fa fa-pie-chart",
+              "target": "_self"
+            },
+            {
+              "title": "库存价值分析报表",
+              "href": "库存价值分析报表.html",
+              "icon": "fa fa-money",
+              "target": "_self"
+            },
+            {
+              "title": "入库出库趋势报表",
+              "href": "入库出库趋势报表.html",
+              "icon": "fa fa-area-chart",
+              "target": "_self"
+            },
+            {
+              "title": "产品周转效率报表",
+              "href": "产品周转效率报表.html",
+              "icon": "fa fa-tachometer",
+              "target": "_self"
+            }
+          ]
+        },
+        {
+          "title": "系统权限",
+          "href": "",
+          "icon": "fa fa-shield",
+          "target": "_self",
+          "child": [
+            {
+              "title": "角色创建与分配",
+              "href": "角色创建与分配.html",
+              "icon": "fa fa-user-circle-o",
+              "target": "_self"
+            },
+            {
+              "title": "用户账号管理",
+              "href": "用户账号管理.html",
+              "icon": "fa fa-users",
+              "target": "_self"
+            },
+            {
+              "title": "操作权限设置",
+              "href": "操作权限设置.html",
+              "icon": "fa fa-key",
+              "target": "_self"
+            },
+            {
+              "title": "操作日志查询",
+              "href": "操作日志查询.html",
+              "icon": "fa fa-history",
+              "target": "_self"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
