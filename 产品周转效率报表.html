@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>产品周转效率报表</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        body { background: #f5f5f5; padding: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .efficiency-card { background: #fff; border-radius: 4px; padding: 12px; margin-bottom: 15px; }
+        .efficiency-value { font-size: 22px; font-weight: bold; margin: 5px 0; }
+        .efficiency-label { color: #666; font-size: 13px; }
+        .efficiency-desc { font-size: 12px; }
+        .filter-section { background: #fff; padding: 12px; border-radius: 4px; margin-bottom: 15px; }
+        .chart-wrapper { background: #fff; border-radius: 4px; padding: 15px; margin-bottom: 15px; }
+        .chart-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+        .turnover-table { background: #fff; border-radius: 4px; overflow: hidden; }
+        .table-title { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+        .turnover-bar { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; margin: 5px 0; }
+        .turnover-fill { height: 100%; }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="header">
+        <h2 style="margin: 0; font-size: 16px;"><i class="fa fa-refresh" style="color: #2196F3;"></i> 产品周转效率报表</h2>
+        <div>
+            <button class="layui-btn layui-btn-sm" id="exportBtn"><i class="fa fa-download"></i> 导出</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="refreshBtn"><i class="fa fa-refresh"></i> 刷新</button>
+        </div>
+    </div>
+
+    <!-- 周转效率核心指标 -->
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md3">
+            <div class="efficiency-card">
+                <div class="efficiency-value" style="color: #2196F3;">7.2次/年</div>
+                <div class="efficiency-label">整体库存周转率</div>
+                <div class="efficiency-desc" style="color: #4CAF50;"><i class="fa fa-arrow-up"></i> 较上月提升0.3次</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="efficiency-card">
+                <div class="efficiency-value" style="color: #F44336;">52天</div>
+                <div class="efficiency-label">平均库存周转天数</div>
+                <div class="efficiency-desc" style="color: #4CAF50;"><i class="fa fa-arrow-down"></i> 较上月减少3天</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="efficiency-card">
+                <div class="efficiency-value" style="color: #FF9800;">28</div>
+                <div class="efficiency-label">低周转商品数</div>
+                <div class="efficiency-desc" style="color: #F44336;"><i class="fa fa-arrow-up"></i> 较上月增加2个</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="efficiency-card">
+                <div class="efficiency-value" style="color: #4CAF50;">¥126,800</div>
+                <div class="efficiency-label">低效库存占用资金</div>
+                <div class="efficiency-desc" style="color: #4CAF50;"><i class="fa fa-arrow-down"></i> 较上月减少8.2%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选条件 -->
+    <div class="filter-section layui-form">
+        <div class="layui-row">
+            <div class="layui-col-md2">
+                <select name="period" class="layui-select layui-select-sm">
+                    <option value="month">月度</option>
+                    <option value="quarter" selected>季度</option>
+                    <option value="year">年度</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="category" class="layui-select layui-select-sm">
+                    <option value="" selected>全部分类</option>
+                    <option value="electronics">电子产品</option>
+                    <option value="clothing">服装鞋帽</option>
+                    <option value="home">家居用品</option>
+                    <option value="food">食品饮料</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="efficiencyLevel" class="layui-select layui-select-sm">
+                    <option value="" selected>全部效率</option>
+                    <option value="high">高周转</option>
+                    <option value="medium">中周转</option>
+                    <option value="low">低周转</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="compare" class="layui-select layui-select-sm">
+                    <option value="previous" selected>与上期对比</option>
+                    <option value="same">与同期对比</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <button class="layui-btn layui-btn-sm">查询</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary">重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 周转效率图表分析 -->
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md8">
+            <div class="chart-wrapper">
+                <div class="chart-title">各分类周转率趋势</div>
+                <div style="height: 300px;">
+                    <canvas id="categoryTurnoverChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="chart-wrapper">
+                <div class="chart-title">周转效率分布</div>
+                <div style="height: 300px;">
+                    <canvas id="efficiencyDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md12">
+            <div class="chart-wrapper">
+                <div class="chart-title">周转率与库存价值关系</div>
+                <div style="height: 300px;">
+                    <canvas id="turnoverValueChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 产品周转效率明细 -->
+    <div class="turnover-table">
+        <div class="table-title">
+            <div style="font-weight: 500;">产品周转效率明细</div>
+            <div>
+                <input type="text" placeholder="搜索产品名称/编码" class="layui-input layui-input-sm" style="width: 200px; display: inline-block;">
+                <button class="layui-btn layui-btn-sm">搜索</button>
+            </div>
+        </div>
+        <table class="layui-table" lay-size="sm" style="margin: 0;">
+            <thead>
+                <tr>
+                    <th>产品编码</th>
+                    <th>产品名称</th>
+                    <th>分类</th>
+                    <th>季度出库量</th>
+                    <th>平均库存</th>
+                    <th>周转率(次/季)</th>
+                    <th>周转天数</th>
+                    <th>效率评级</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>SKU001</td>
+                    <td>无线蓝牙耳机</td>
+                    <td>电子产品</td>
+                    <td>1,280</td>
+                    <td>160</td>
+                    <td>8.0</td>
+                    <td>11</td>
+                    <td>
+                        <span class="layui-badge layui-bg-green">高效</span>
+                        <div class="turnover-bar">
+                            <div class="turnover-fill" style="width: 90%; background: #4CAF50;"></div>
+                        </div>
+                    </td>
+                    <td><button class="layui-btn layui-btn-xs layui-btn-primary">分析</button></td>
+                </tr>
+                <tr>
+                    <td>SKU002</td>
+                    <td>纯棉T恤</td>
+                    <td>服装鞋帽</td>
+                    <td>950</td>
+                    <td>317</td>
+                    <td>3.0</td>
+                    <td>30</td>
+                    <td>
+                        <span class="layui-badge layui-bg-blue">中等</span>
+                        <div class="turnover-bar">
+                            <div class="turnover-fill" style="width: 50%; background: #2196F3;"></div>
+                        </div>
+                    </td>
+                    <td><button class="layui-btn layui-btn-xs layui-btn-primary">分析</button></td>
+                </tr>
+                <tr>
+                    <td>SKU003</td>
+                    <td>实木书架</td>
+                    <td>家居用品</td>
+                    <td>120</td>
+                    <td>240</td>
+                    <td>0.5</td>
+                    <td>180</td>
+                    <td>
+                        <span class="layui-badge layui-bg-red">低效</span>
+                        <div class="turnover-bar">
+                            <div class="turnover-fill" style="width: 10%; background: #F44336;"></div>
+                        </div>
+                    </td>
+                    <td><button class="layui-btn layui-btn-xs layui-btn-primary">分析</button></td>
+                </tr>
+                <tr>
+                    <td>SKU004</td>
+                    <td>矿泉水</td>
+                    <td>食品饮料</td>
+                    <td>3,200</td>
+                    <td>400</td>
+                    <td>8.0</td>
+                    <td>11</td>
+                    <td>
+                        <span class="layui-badge layui-bg-green">高效</span>
+                        <div class="turnover-bar">
+                            <div class="turnover-fill" style="width: 85%; background: #4CAF50;"></div>
+                        </div>
+                    </td>
+                    <td><button class="layui-btn layui-btn-xs layui-btn-primary">分析</button></td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="padding: 12px; text-align: right; border-top: 1px solid #eee;">
+            <div class="layui-laypage layui-laypage-default">
+                <span class="layui-laypage-count">共 156 条</span>
+                <a href="#" class="layui-laypage-prev">上一页</a>
+                <span class="layui-laypage-curr"><em>1</em></span>
+                <a href="#">2</a>
+                <a href="#">3</a>
+                <a href="#" class="layui-laypage-next">下一页</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer'], function() {
+            var form = layui.form,
+                layer = layui.layer;
+            
+            // 初始化图表
+            initCharts();
+            
+            // 图表初始化
+            function initCharts() {
+                // 各分类周转率趋势
+                new Chart(document.getElementById('categoryTurnoverChart'), {
+                    type: 'line',
+                    data: {
+                        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                        datasets: [
+                            {
+                                label: '电子产品',
+                                data: [6.8, 7.2, 7.5, 8.0],
+                                borderColor: '#2196F3',
+                                tension: 0.3
+                            },
+                            {
+                                label: '服装鞋帽',
+                                data: [5.2, 5.5, 5.8, 6.2],
+                                borderColor: '#FF9800',
+                                tension: 0.3
+                            },
+                            {
+                                label: '家居用品',
+                                data: [2.1, 2.3, 2.2, 2.5],
+                                borderColor: '#F44336',
+                                tension: 0.3
+                            },
+                            {
+                                label: '食品饮料',
+                                data: [9.5, 10.2, 10.8, 11.5],
+                                borderColor: '#4CAF50',
+                                tension: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { 
+                                beginAtZero: true,
+                                title: { display: true, text: '周转率(次/季)' }
+                            },
+                            x: { title: { display: true, text: '季度' } }
+                        }
+                    }
+                });
+
+                // 周转效率分布
+                new Chart(document.getElementById('efficiencyDistributionChart'), {
+                    type: 'pie',
+                    data: {
+                        labels: ['高周转', '中周转', '低周转'],
+                        datasets: [{
+                            data: [35, 45, 20],
+                            backgroundColor: ['#4CAF50', '#2196F3', '#F44336']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+
+                // 周转率与库存价值关系
+                new Chart(document.getElementById('turnoverValueChart'), {
+                    type: 'bubble',
+                    data: {
+                        datasets: [
+                            {
+                                label: '电子产品',
+                                data: [
+                                    { x: 8.0, y: 250000, r: 15 },
+                                    { x: 6.5, y: 180000, r: 12 },
+                                    { x: 4.2, y: 320000, r: 18 }
+                                ],
+                                backgroundColor: 'rgba(33, 150, 243, 0.6)'
+                            },
+                            {
+                                label: '家居用品',
+                                data: [
+                                    { x: 2.5, y: 420000, r: 20 },
+                                    { x: 1.8, y: 350000, r: 18 },
+                                    { x: 0.5, y: 280000, r: 16 }
+                                ],
+                                backgroundColor: 'rgba(244, 67, 54, 0.6)'
+                            },
+                            {
+                                label: '食品饮料',
+                                data: [
+                                    { x: 11.5, y: 150000, r: 10 },
+                                    { x: 9.8, y: 220000, r: 14 },
+                                    { x: 8.5, y: 180000, r: 12 }
+                                ],
+                                backgroundColor: 'rgba(76, 175, 80, 0.6)'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { title: { display: true, text: '周转率(次/年)' } },
+                            y: { title: { display: true, text: '库存价值(元)' } }
+                        }
+                    }
+                });
+            }
+
+            // 导出报表
+            $('#exportBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('周转效率报表导出成功', { icon: 1 });
+                }, 800);
+            });
+
+            // 刷新数据
+            $('#refreshBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('数据已更新', { icon: 1 });
+                    initCharts();
+                }, 600);
+            });
+        });
+    </script>
+</body>
+</html>
+    

@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>最低库存阈值设置系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-ok { background-color: #4CAF50; } /* 正常 */
+        .status-warning { background-color: #FF9800; } /* 预警 */
+        .status-alert { background-color: #F44336; } /* 缺货 */
+        
+        .threshold-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .category-filter {
+            margin-bottom: 15px;
+        }
+        
+        .stock-bar-container {
+            height: 8px;
+            background-color: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        .stock-bar {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .stock-bar-ok { background-color: #4CAF50; }
+        .stock-bar-warning { background-color: #FF9800; }
+        .stock-bar-alert { background-color: #F44336; }
+        
+        .recommendation {
+            font-size: 12px;
+            color: #1976d2;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fa fa-exclamation-triangle" style="color: #FF9800;"></i> 最低库存阈值设置
+        </div>
+        <button class="layui-btn" id="batchSetBtn">
+            <i class="fa fa-cogs"></i> 批量设置
+        </button>
+    </div>
+
+    <!-- 阈值设置概览 -->
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md3">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold; color: #333;">128</div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">已设置阈值商品</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold; color: #F44336;">18</div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">低于阈值商品</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold; color: #FF9800;">24</div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">接近阈值商品</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold; color: #4CAF50;">86</div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">正常库存商品</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阈值分布分析 -->
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header">各品类阈值设置数量</div>
+                <div class="layui-card-body">
+                    <div style="height: 250px;">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header">阈值与销量关系分析</div>
+                <div class="layui-card-body">
+                    <div style="height: 250px;">
+                        <canvas id="thresholdSalesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阈值设置列表 -->
+    <div class="layui-card">
+        <div class="layui-card-header">
+            商品最低库存阈值设置
+        </div>
+        <div class="layui-card-body">
+            <div class="category-filter">
+                <div class="layui-form">
+                    <div class="layui-input-inline" style="width: 200px;">
+                        <input type="text" name="keyword" placeholder="搜索商品名称/编码" autocomplete="off" class="layui-input">
+                    </div>
+                    <div class="layui-input-inline" style="width: 180px;">
+                        <select name="category">
+                            <option value="">全部分类</option>
+                            <option value="cosmetics">美妆护肤</option>
+                            <option value="skincare">个人护理</option>
+                            <option value="haircare">洗发护发</option>
+                        </select>
+                    </div>
+                    <div class="layui-input-inline" style="width: 180px;">
+                        <select name="status">
+                            <option value="">全部状态</option>
+                            <option value="ok">库存正常</option>
+                            <option value="warning">接近阈值</option>
+                            <option value="alert">低于阈值</option>
+                        </select>
+                    </div>
+                    <button class="layui-btn" lay-submit lay-filter="searchThreshold">
+                        <i class="fa fa-search"></i> 搜索
+                    </button>
+                    <button class="layui-btn layui-btn-primary" id="refreshList">
+                        <i class="fa fa-refresh"></i> 刷新
+                    </button>
+                </div>
+            </div>
+
+            <table class="layui-table" lay-size="sm">
+                <thead>
+                    <tr>
+                        <th>商品编码</th>
+                        <th>商品名称</th>
+                        <th>所属分类</th>
+                        <th>当前库存</th>
+                        <th>最低库存阈值</th>
+                        <th>库存状态</th>
+                        <th>建议调整</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 低于阈值 -->
+                    <tr>
+                        <td>G002</td>
+                        <td>丝绒哑光口红（#正红色）</td>
+                        <td>美妆护肤</td>
+                        <td>8</td>
+                        <td>
+                            <span class="threshold-tag">15</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-alert">低于阈值</span>
+                            <div class="stock-bar-container">
+                                <div class="stock-bar stock-bar-alert" style="width: 53%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="recommendation">
+                                <i class="fa fa-lightbulb-o"></i> 建议提高至20
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="setThreshold('G002')">
+                                <i class="fa fa-edit"></i> 设置
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 接近阈值 -->
+                    <tr>
+                        <td>G001</td>
+                        <td>水润保湿精华液</td>
+                        <td>美妆护肤</td>
+                        <td>32</td>
+                        <td>
+                            <span class="threshold-tag">25</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-warning">接近阈值</span>
+                            <div class="stock-bar-container">
+                                <div class="stock-bar stock-bar-warning" style="width: 78%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="recommendation">
+                                <i class="fa fa-lightbulb-o"></i> 保持当前阈值
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="setThreshold('G001')">
+                                <i class="fa fa-edit"></i> 设置
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 正常库存 -->
+                    <tr>
+                        <td>G004</td>
+                        <td>焕白面膜（10片装）</td>
+                        <td>美妆护肤</td>
+                        <td>45</td>
+                        <td>
+                            <span class="threshold-tag">15</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-ok">库存正常</span>
+                            <div class="stock-bar-container">
+                                <div class="stock-bar stock-bar-ok" style="width: 90%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="recommendation">
+                                <i class="fa fa-lightbulb-o"></i> 建议降低至10
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="setThreshold('G004')">
+                                <i class="fa fa-edit"></i> 设置
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 正常库存 -->
+                    <tr>
+                        <td>G003</td>
+                        <td>修护洗发水</td>
+                        <td>洗发护发</td>
+                        <td>120</td>
+                        <td>
+                            <span class="threshold-tag">30</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-ok">库存正常</span>
+                            <div class="stock-bar-container">
+                                <div class="stock-bar stock-bar-ok" style="width: 95%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="recommendation">
+                                <i class="fa fa-lightbulb-o"></i> 保持当前阈值
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="setThreshold('G003')">
+                                <i class="fa fa-edit"></i> 设置
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 接近阈值 -->
+                    <tr>
+                        <td>G005</td>
+                        <td>温和洁面乳</td>
+                        <td>个人护理</td>
+                        <td>28</td>
+                        <td>
+                            <span class="threshold-tag">20</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-warning">接近阈值</span>
+                            <div class="stock-bar-container">
+                                <div class="stock-bar stock-bar-warning" style="width: 70%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="recommendation">
+                                <i class="fa fa-lightbulb-o"></i> 建议提高至25
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="setThreshold('G005')">
+                                <i class="fa fa-edit"></i> 设置
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="text-align: right;">
+                <div id="pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阈值设置弹窗 -->
+    <div class="layui-modal" id="thresholdModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title" id="modalTitle">
+            <i class="fa fa-edit"></i> 设置最低库存阈值 - 丝绒哑光口红（#正红色）
+        </div>
+        <div class="layui-modal-body">
+            <form class="layui-form" lay-filter="thresholdForm">
+                <input type="hidden" name="productId" id="productId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">商品编码</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="productCode" id="productCode" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">商品名称</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="productName" id="productName" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">当前库存</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="currentStock" id="currentStock" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">日均销量</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="dailySales" id="dailySales" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">补货周期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="replenishCycle" id="replenishCycle" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">最低库存阈值</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="thresholdValue" id="thresholdValue" 
+                            lay-verify="required|number" min="0" class="layui-input">
+                        <div class="layui-form-mid layui-word-aux" id="thresholdTips">
+                            系统建议值: <span style="color: #1976d2;" id="suggestedThreshold">20</span>
+                            (基于日均销量和补货周期计算)
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">预警触发方式</label>
+                    <div class="layui-input-block">
+                        <radio name="alertType" value="below" checked> 低于阈值时预警</radio>
+                        <radio name="alertType" value="percent"> 达到阈值百分比时预警</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" id="alertPercentContainer" style="display: none;">
+                    <label class="layui-form-label">预警百分比</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="alertPercent" lay-verify="required|number" min="1" max="100" 
+                            value="120" class="layui-input">
+                        <div class="layui-form-mid layui-word-aux">
+                            例如: 设置120表示库存达到阈值120%时预警
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <textarea name="remark" class="layui-textarea" rows="2" 
+                            placeholder="请输入设置说明或特殊考虑因素"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelSet">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitThreshold">保存设置</button>
+        </div>
+    </div>
+
+    <!-- 批量设置弹窗 -->
+    <div class="layui-modal" id="batchSetModal" style="display: none; width: 600px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-cogs"></i> 批量设置最低库存阈值
+        </div>
+        <div class="layui-modal-body">
+            <form class="layui-form" lay-filter="batchSetForm">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">选择分类</label>
+                    <div class="layui-input-block">
+                        <select name="batchCategory" lay-verify="required">
+                            <option value="">请选择分类</option>
+                            <option value="cosmetics">美妆护肤</option>
+                            <option value="skincare">个人护理</option>
+                            <option value="haircare">洗发护发</option>
+                            <option value="all">全部分类</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">设置方式</label>
+                    <div class="layui-input-block">
+                        <radio name="setMethod" value="auto" checked> 按公式自动计算</radio>
+                        <radio name="setMethod" value="manual"> 统一设置固定值</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" id="formulaContainer">
+                    <label class="layui-form-label">计算公式</label>
+                    <div class="layui-input-block">
+                        <select name="formulaType" lay-verify="required">
+                            <option value="sales_cycle">日均销量 × 补货周期 × 1.2安全系数</option>
+                            <option value="max_sales">近7日最高销量 × 2</option>
+                            <option value="month_sales">月均销量 ÷ 4</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" id="fixedValueContainer" style="display: none;">
+                    <label class="layui-form-label">固定阈值</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="fixedThreshold" lay-verify="required|number" min="0" 
+                            placeholder="请输入固定阈值" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">适用范围</label>
+                    <div class="layui-input-block">
+                        <radio name="applyScope" value="all" checked> 所选分类下所有商品</radio>
+                        <radio name="applyScope" value="unset"> 仅未设置阈值的商品</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">预警设置</label>
+                    <div class="layui-input-block">
+                        <select name="batchAlertType">
+                            <option value="below">低于阈值时预警</option>
+                            <option value="percent">达到阈值百分比时预警</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <div class="layui-checkbox">
+                            <input type="checkbox" name="previewBeforeApply" checked>
+                            <div class="layui-unselect layui-checkbox layui-checkbox-checked"></div>
+                            <span>应用前预览设置结果</span>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelBatchSet">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitBatchSet">下一步</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage;
+            
+            // 商品数据
+            var products = {
+                "G001": {
+                    id: "G001",
+                    code: "G001",
+                    name: "水润保湿精华液",
+                    category: "美妆护肤",
+                    stock: 32,
+                    threshold: 25,
+                    dailySales: 14,
+                    replenishCycle: "3天",
+                    status: "warning",
+                    suggestedThreshold: 25
+                },
+                "G002": {
+                    id: "G002",
+                    code: "G002",
+                    name: "丝绒哑光口红（#正红色）",
+                    category: "美妆护肤",
+                    stock: 8,
+                    threshold: 15,
+                    dailySales: 18,
+                    replenishCycle: "2天",
+                    status: "alert",
+                    suggestedThreshold: 20
+                },
+                "G003": {
+                    id: "G003",
+                    code: "G003",
+                    name: "修护洗发水",
+                    category: "洗发护发",
+                    stock: 120,
+                    threshold: 30,
+                    dailySales: 6,
+                    replenishCycle: "5天",
+                    status: "ok",
+                    suggestedThreshold: 30
+                },
+                "G004": {
+                    id: "G004",
+                    code: "G004",
+                    name: "焕白面膜（10片装）",
+                    category: "美妆护肤",
+                    stock: 45,
+                    threshold: 15,
+                    dailySales: 11,
+                    replenishCycle: "4天",
+                    status: "ok",
+                    suggestedThreshold: 10
+                },
+                "G005": {
+                    id: "G005",
+                    code: "G005",
+                    name: "温和洁面乳",
+                    category: "个人护理",
+                    stock: 28,
+                    threshold: 20,
+                    dailySales: 8,
+                    replenishCycle: "3天",
+                    status: "warning",
+                    suggestedThreshold: 25
+                }
+            };
+            
+            // 初始化图表
+            initCharts();
+            
+            // 初始化分页
+            laypage.render({
+                elem: 'pagination',
+                count: 128,
+                limit: 10,
+                layout: ['prev', 'page', 'next', 'count']
+            });
+            
+            // 初始化图表
+            function initCharts() {
+                // 分类阈值设置数量图表
+                const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+                new Chart(categoryCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['美妆护肤', '个人护理', '洗发护发', '家居清洁', '其他'],
+                        datasets: [{
+                            label: '已设置阈值商品数',
+                            data: [56, 32, 24, 10, 6],
+                            backgroundColor: 'rgba(33, 150, 243, 0.7)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // 阈值与销量关系分析图表
+                const thresholdCtx = document.getElementById('thresholdSalesChart').getContext('2d');
+                new Chart(thresholdCtx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: '商品数据',
+                            data: [
+                                { x: 14, y: 25 },  // G001: 日均销量14，阈值25
+                                { x: 18, y: 15 },  // G002: 日均销量18，阈值15
+                                { x: 6, y: 30 },   // G003: 日均销量6，阈值30
+                                { x: 11, y: 15 },  // G004: 日均销量11，阈值15
+                                { x: 8, y: 20 }    // G005: 日均销量8，阈值20
+                            ],
+                            backgroundColor: 'rgba(255, 152, 0, 0.7)',
+                            pointRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日均销量'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '最低库存阈值'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 设置阈值
+            window.setThreshold = function(productId) {
+                const product = products[productId];
+                if (!product) return;
+                
+                // 填充表单数据
+                $('#modalTitle').html(`<i class="fa fa-edit"></i> 设置最低库存阈值 - ${product.name}`);
+                $('#productId').val(product.id);
+                $('#productCode').val(product.code);
+                $('#productName').val(product.name);
+                $('#currentStock').val(product.stock);
+                $('#dailySales').val(`${product.dailySales}件/天`);
+                $('#replenishCycle').val(product.replenishCycle);
+                $('#thresholdValue').val(product.threshold);
+                $('#suggestedThreshold').text(product.suggestedThreshold);
+                
+                // 显示弹窗
+                $('#thresholdModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+            
+            // 打开批量设置弹窗
+            $('#batchSetBtn').click(function() {
+                $('#batchSetModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            });
+            
+            // 关闭弹窗
+            $('#cancelSet, #cancelBatchSet').click(function() {
+                $('#thresholdModal, #batchSetModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+            
+            // 预警触发方式切换
+            form.on('radio(alertType)', function(data) {
+                if (data.value === 'percent') {
+                    $('#alertPercentContainer').show();
+                } else {
+                    $('#alertPercentContainer').hide();
+                }
+            });
+            
+            // 批量设置方式切换
+            form.on('radio(setMethod)', function(data) {
+                if (data.value === 'auto') {
+                    $('#formulaContainer').show();
+                    $('#fixedValueContainer').hide();
+                } else {
+                    $('#formulaContainer').hide();
+                    $('#fixedValueContainer').show();
+                }
+            });
+            
+            // 提交阈值设置
+            form.on('submit(submitThreshold)', function(data) {
+                const productId = $('#productId').val();
+                const product = products[productId];
+                
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#thresholdModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg(`${product.name} 阈值设置已保存`, {icon: 1});
+                }, 800);
+                
+                return false;
+            });
+            
+            // 提交批量设置
+            form.on('submit(submitBatchSet)', function(data) {
+                const category = $("select[name='batchCategory']").find("option:selected").text();
+                
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#batchSetModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg(`${category} 批量阈值设置预览已生成`, {icon: 1});
+                }, 1000);
+                
+                return false;
+            });
+            
+            // 刷新列表
+            $('#refreshList').click(function() {
+                const loadIndex = layer.load(1);
+                setTimeout(function() {
+                    layer.close(loadIndex);
+                    layer.msg('阈值列表已刷新', {icon: 1});
+                }, 800);
+            });
+        });
+    </script>
+</body>
+</html>
+    

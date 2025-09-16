@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>库存积压预警系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        body { background: #f5f5f5; padding: 15px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .stat-card { text-align: center; padding: 10px 0; margin-bottom: 15px; }
+        .stat-value { font-size: 22px; font-weight: bold; margin: 3px 0; }
+        .stat-label { color: #666; font-size: 13px; }
+        
+        /* 状态标签 */
+        .status-tag { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #fff; }
+        .normal { background: #4CAF50; } /* 正常 */
+        .warning { background: #FF9800; } /* 轻度积压 */
+        .overstock { background: #F44336; } /* 严重积压 */
+        
+        /* 周转进度条 */
+        .turnover-bar { height: 6px; border-radius: 3px; background: #eee; margin: 4px 0; overflow: hidden; }
+        .turnover-progress { height: 100%; }
+        
+        /* 处理建议标签 */
+        .solution-tag { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 12px; background: #e3f2fd; color: #1976d2; }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="page-header">
+        <h2 style="font-size: 16px; margin: 0;"><i class="fa fa-stack-overflow" style="color: #F44336;"></i> 库存积压预警</h2>
+        <div>
+            <button class="layui-btn layui-btn-sm" id="batchHandleBtn"><i class="fa fa-cog"></i> 批量处理</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="exportBtn"><i class="fa fa-download"></i> 导出</button>
+        </div>
+    </div>
+
+    <!-- 核心统计 -->
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md4">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #F44336;">18</div>
+                <div class="stat-label">严重积压商品</div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #FF9800;">25</div>
+                <div class="stat-label">轻度积压商品</div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #4CAF50;">156</div>
+                <div class="stat-label">库存正常商品</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据可视化 -->
+    <div class="layui-row layui-col-space10" style="margin-bottom: 15px;">
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header" style="font-size: 14px;">积压商品分类分布</div>
+                <div class="layui-card-body" style="padding: 10px; height: 200px;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header" style="font-size: 14px;">库存周转天数分析</div>
+                <div class="layui-card-body" style="padding: 10px; height: 200px;">
+                    <canvas id="turnoverChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 积压商品列表 -->
+    <div class="layui-card">
+        <div class="layui-card-header" style="font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span>积压商品清单</span>
+            <div class="layui-form" style="margin: 0;">
+                <div class="layui-input-inline" style="width: 150px;">
+                    <input type="text" name="keyword" placeholder="搜索商品/编码" class="layui-input layui-input-sm">
+                </div>
+                <div class="layui-input-inline" style="width: 120px;">
+                    <select name="status" class="layui-select layui-select-sm">
+                        <option value="">全部状态</option>
+                        <option value="overstock">严重积压</option>
+                        <option value="warning">轻度积压</option>
+                        <option value="normal">库存正常</option>
+                    </select>
+                </div>
+                <button class="layui-btn layui-btn-sm"><i class="fa fa-search"></i> 查</button>
+            </div>
+        </div>
+        <div class="layui-card-body" style="padding: 0;">
+            <table class="layui-table" lay-size="sm">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"><input type="checkbox" lay-skin="primary" id="checkAll"></th>
+                        <th>商品信息</th>
+                        <th>当前库存</th>
+                        <th>30天销量</th>
+                        <th>周转天数</th>
+                        <th>状态</th>
+                        <th>处理建议</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 严重积压 -->
+                    <tr>
+                        <td><input type="checkbox" lay-skin="primary" name="productCheck" value="P001"></td>
+                        <td>
+                            <div>复古台灯</div>
+                            <div style="font-size: 12px; color: #666;">编码：P001</div>
+                        </td>
+                        <td>120</td>
+                        <td>5</td>
+                        <td>720天</td>
+                        <td>
+                            <span class="status-tag overstock">严重积压</span>
+                            <div class="turnover-bar"><div class="turnover-progress" style="width: 90%; background: #F44336;"></div></div>
+                        </td>
+                        <td><span class="solution-tag">深度折扣</span></td>
+                        <td><button class="layui-btn layui-btn-xs layui-btn-danger" onclick="handleProduct('P001')">处理</button></td>
+                    </tr>
+                    <!-- 轻度积压 -->
+                    <tr>
+                        <td><input type="checkbox" lay-skin="primary" name="productCheck" value="P002"></td>
+                        <td>
+                            <div>棉麻抱枕</div>
+                            <div style="font-size: 12px; color: #666;">编码：P002</div>
+                        </td>
+                        <td>80</td>
+                        <td>20</td>
+                        <td>120天</td>
+                        <td>
+                            <span class="status-tag warning">轻度积压</span>
+                            <div class="turnover-bar"><div class="turnover-progress" style="width: 60%; background: #FF9800;"></div></div>
+                        </td>
+                        <td><span class="solution-tag">组合促销</span></td>
+                        <td><button class="layui-btn layui-btn-xs layui-btn-warning" onclick="handleProduct('P002')">处理</button></td>
+                    </tr>
+                    <!-- 库存正常 -->
+                    <tr>
+                        <td><input type="checkbox" lay-skin="primary" name="productCheck" value="P003"></td>
+                        <td>
+                            <div>ins风马克杯</div>
+                            <div style="font-size: 12px; color: #666;">编码：P003</div>
+                        </td>
+                        <td>50</td>
+                        <td>35</td>
+                        <td>43天</td>
+                        <td>
+                            <span class="status-tag normal">库存正常</span>
+                            <div class="turnover-bar"><div class="turnover-progress" style="width: 30%; background: #4CAF50;"></div></div>
+                        </td>
+                        <td><span class="solution-tag">维持现状</span></td>
+                        <td><button class="layui-btn layui-btn-xs layui-btn-primary" onclick="viewProduct('P003')">查看</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 处理弹窗 -->
+    <div class="layui-modal" id="handleModal" style="display: none; width: 400px;">
+        <div class="layui-modal-title" style="font-size: 14px;" id="modalTitle">商品处理 - 复古台灯</div>
+        <div class="layui-modal-body" style="padding: 15px;">
+            <form class="layui-form" lay-filter="handleForm">
+                <input type="hidden" name="productId" id="productId">
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 80px;">处理方式</label>
+                    <div class="layui-input-block">
+                        <radio name="method" value="discount" checked>折扣促销</radio>
+                        <radio name="method" value="bundle">组合销售</radio>
+                        <radio name="method" value="return">退回供应商</radio>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 80px;">处理数量</label>
+                    <div class="layui-input-block" style="margin-left: 100px;">
+                        <input type="number" name="quantity" lay-verify="required" min="1" value="120" class="layui-input layui-input-sm">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 80px;">备注</label>
+                    <div class="layui-input-block" style="margin-left: 100px;">
+                        <textarea name="remark" class="layui-textarea layui-textarea-sm" rows="2"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="cancelHandle">取消</button>
+            <button class="layui-btn layui-btn-sm" lay-submit lay-filter="submitHandle">确认</button>
+        </div>
+    </div>
+
+    <!-- 批量处理弹窗 -->
+    <div class="layui-modal" id="batchModal" style="display: none; width: 400px;">
+        <div class="layui-modal-title" style="font-size: 14px;">批量处理</div>
+        <div class="layui-modal-body" style="padding: 15px;">
+            <form class="layui-form" lay-filter="batchForm">
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 80px;">选中数量</label>
+                    <div class="layui-input-block" style="margin-left: 100px;">
+                        <input type="text" id="selectedCount" value="0" class="layui-input layui-input-sm" disabled>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 80px;">处理方式</label>
+                    <div class="layui-input-block">
+                        <radio name="batchMethod" value="discount" checked>统一折扣</radio>
+                        <radio name="batchMethod" value="return">统一退回</radio>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 80px;">备注</label>
+                    <div class="layui-input-block" style="margin-left: 100px;">
+                        <textarea name="batchRemark" class="layui-textarea layui-textarea-sm" rows="2"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="cancelBatch">取消</button>
+            <button class="layui-btn layui-btn-sm" lay-submit lay-filter="submitBatch">确认</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage'], function() {
+            var form = layui.form, 
+                layer = layui.layer,
+                laypage = layui.laypage;
+            
+            // 商品数据
+            var products = {
+                "P001": {id:"P001", name:"复古台灯", stock:120, sales30:5, turnover:720, status:"overstock"},
+                "P002": {id:"P002", name:"棉麻抱枕", stock:80, sales30:20, turnover:120, status:"warning"},
+                "P003": {id:"P003", name:"ins风马克杯", stock:50, sales30:35, turnover:43, status:"normal"}
+            };
+
+            // 初始化图表
+            initCharts();
+            
+            // 初始化分页
+            laypage.render({
+                elem: 'pagination',
+                count: 199,
+                limit: 10,
+                layout: ['prev', 'page', 'next']
+            });
+
+            // 图表初始化
+            function initCharts() {
+                // 分类分布
+                new Chart(document.getElementById('categoryChart'), {
+                    type: 'pie',
+                    data: {
+                        labels: ['家居用品', '电子产品', '服装鞋帽'],
+                        datasets: [{
+                            data: [12, 8, 6], 
+                            backgroundColor: ['#F44336', '#FF9800', '#4CAF50']
+                        }]
+                    },
+                    options: {
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {font: {size: 12}}
+                            }
+                        }
+                    }
+                });
+
+                // 周转天数
+                new Chart(document.getElementById('turnoverChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['0-60天', '61-180天', '181-365天', '365天+'],
+                        datasets: [{
+                            label: '商品数', 
+                            data: [156, 18, 12, 6], 
+                            backgroundColor: '#2196F3'
+                        }]
+                    },
+                    options: {
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {beginAtZero: true, ticks: {precision: 0}}
+                        }
+                    }
+                });
+            }
+
+            // 单个商品处理
+            window.handleProduct = function(id) {
+                var p = products[id];
+                $('#modalTitle').text('商品处理 - ' + p.name);
+                $('#productId').val(id);
+                $('input[name="quantity"]').val(p.stock);
+                $('#handleModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 查看商品详情
+            window.viewProduct = function(id) {
+                var p = products[id];
+                layer.alert(`
+                    <div style="font-weight: bold; margin-bottom: 8px;">${p.name}</div>
+                    <div>编码：${p.id}</div>
+                    <div>当前库存：${p.stock}</div>
+                    <div>30天销量：${p.sales30}</div>
+                    <div>库存周转天数：${p.turnover}天</div>
+                `, {title: '商品详情', area: ['300px', 'auto']});
+            };
+
+            // 批量处理
+            $('#batchHandleBtn').click(function() {
+                var count = $("input[name='productCheck']:checked").length;
+                if (count === 0) {
+                    layer.msg('请选择商品', {icon: 2});
+                    return;
+                }
+                $('#selectedCount').val(count);
+                $('#batchModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            });
+
+            // 关闭弹窗
+            $('#cancelHandle, #cancelBatch').click(function() {
+                $('#handleModal, #batchModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 全选/取消全选
+            form.on('checkbox(checkAll)', function(data) {
+                $("input[name='productCheck']").prop('checked', data.elem.checked);
+                form.render('checkbox');
+            });
+
+            // 提交处理
+            form.on('submit(submitHandle)', function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('处理完成', {icon: 1});
+                }, 800);
+                return false;
+            });
+
+            // 提交批量处理
+            form.on('submit(submitBatch)', function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('批量处理完成', {icon: 1});
+                }, 1000);
+                return false;
+            });
+
+            // 导出功能
+            $('#exportBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('导出成功', {icon: 1});
+                }, 800);
+            });
+        });
+    </script>
+</body>
+</html>
+    

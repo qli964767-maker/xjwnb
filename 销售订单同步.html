@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>销售订单同步系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+        }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-item {
+            flex: 1;
+            min-width: 200px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-success { background-color: #4CAF50; }
+        .status-pending { background-color: #FF9800; }
+        .status-failed { background-color: #F44336; }
+        .status-syncing { background-color: #2196F3; }
+        
+        .system-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background-color: #e8f4fd;
+            color: #1e9fff;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .sync-log {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .log-item {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed #eee;
+        }
+        .log-time {
+            color: #999;
+            margin-right: 10px;
+        }
+        .log-success {
+            color: #4CAF50;
+        }
+        .log-error {
+            color: #F44336;
+        }
+        .log-info {
+            color: #2196F3;
+        }
+        .dashboard {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .dashboard-card {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .dashboard-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .dashboard-label {
+            color: #666;
+            font-size: 14px;
+        }
+        .sync-progress {
+            height: 6px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-title">
+        <i class="fa fa-exchange"></i> 销售订单同步管理
+    </div>
+
+    <div class="dashboard">
+        <div class="dashboard-card">
+            <i class="fa fa-check-circle" style="color: #4CAF50; font-size: 24px;"></i>
+            <div class="dashboard-value">1,286</div>
+            <div class="dashboard-label">同步成功订单</div>
+        </div>
+        <div class="dashboard-card">
+            <i class="fa fa-exclamation-triangle" style="color: #FF9800; font-size: 24px;"></i>
+            <div class="dashboard-value">24</div>
+            <div class="dashboard-label">待同步订单</div>
+        </div>
+        <div class="dashboard-card">
+            <i class="fa fa-times-circle" style="color: #F44336; font-size: 24px;"></i>
+            <div class="dashboard-value">18</div>
+            <div class="dashboard-label">同步失败订单</div>
+        </div>
+        <div class="dashboard-card">
+            <i class="fa fa-refresh" style="color: #2196F3; font-size: 24px;"></i>
+            <div class="dashboard-value">6</div>
+            <div class="dashboard-label">同步中订单</div>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <div class="search-bar">
+                <div class="search-item">
+                    <div class="layui-input-group">
+                        <input type="text" placeholder="搜索订单编号/平台订单号" class="layui-input" id="orderSearch">
+                        <div class="layui-input-group-addon">
+                            <button class="layui-btn" id="searchBtn">
+                                <i class="fa fa-search"></i> 搜索
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="search-item">
+                    <select name="syncStatus" id="syncStatus">
+                        <option value="">全部状态</option>
+                        <option value="success">同步成功</option>
+                        <option value="pending">待同步</option>
+                        <option value="failed">同步失败</option>
+                        <option value="syncing">同步中</option>
+                    </select>
+                </div>
+                <div class="search-item">
+                    <select name="sourceSystem" id="sourceSystem">
+                        <option value="">全部来源</option>
+                        <option value="erp">ERP系统</option>
+                        <option value="oms">订单管理系统</option>
+                        <option value="shop1">电商平台-店铺1</option>
+                        <option value="shop2">电商平台-店铺2</option>
+                    </select>
+                </div>
+                <div class="search-item">
+                    <select name="targetSystem" id="targetSystem">
+                        <option value="">全部目标</option>
+                        <option value="wms">仓储管理系统</option>
+                        <option value="tms">运输管理系统</option>
+                        <option value="finance">财务系统</option>
+                        <option value="crm">客户管理系统</option>
+                    </select>
+                </div>
+                <div class="search-item">
+                    <button class="layui-btn" id="syncAllBtn">
+                        <i class="fa fa-refresh"></i> 批量同步
+                    </button>
+                    <button class="layui-btn layui-btn-danger" id="retryFailedBtn">
+                        <i class="fa fa-repeat"></i> 重试失败
+                    </button>
+                </div>
+            </div>
+
+            <table class="layui-table" lay-size="sm">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" lay-skin="primary" id="checkAll">
+                        </th>
+                        <th>订单编号</th>
+                        <th>平台订单号</th>
+                        <th>来源系统</th>
+                        <th>目标系统</th>
+                        <th>订单日期</th>
+                        <th>同步状态</th>
+                        <th>最后同步时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="orderTable">
+                    <tr>
+                        <td><input type="checkbox" lay-skin="primary" data-id="SO20231016001"></td>
+                        <td>SO20231016001</td>
+                        <td>PT202310160001</td>
+                        <td><span class="system-tag">ERP系统</span></td>
+                        <td><span class="system-tag">仓储管理系统</span></td>
+                        <td>2023-10-16 09:25:12</td>
+                        <td><span class="status-tag status-success">同步成功</span></td>
+                        <td>2023-10-16 09:26:05</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSyncDetail('SO20231016001')">
+                                    <i class="fa fa-eye"></i> 详情
+                                </button>
+                                <button class="layui-btn layui-btn-normal layui-btn-xs" onclick="syncOrder('SO20231016001')">
+                                    <i class="fa fa-refresh"></i> 重新同步
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" lay-skin="primary" data-id="SO20231016002"></td>
+                        <td>SO20231016002</td>
+                        <td>JD202310160002</td>
+                        <td><span class="system-tag">电商平台-店铺1</span></td>
+                        <td><span class="system-tag">财务系统</span></td>
+                        <td>2023-10-16 10:15:33</td>
+                        <td><span class="status-tag status-pending">待同步</span></td>
+                        <td>-</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSyncDetail('SO20231016002')">
+                                    <i class="fa fa-eye"></i> 详情
+                                </button>
+                                <button class="layui-btn layui-btn-normal layui-btn-xs" onclick="syncOrder('SO20231016002')">
+                                    <i class="fa fa-refresh"></i> 同步
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" lay-skin="primary" data-id="SO20231016003"></td>
+                        <td>SO20231016003</td>
+                        <td>TB202310160003</td>
+                        <td><span class="system-tag">电商平台-店铺2</span></td>
+                        <td><span class="system-tag">运输管理系统</span></td>
+                        <td>2023-10-16 11:05:47</td>
+                        <td><span class="status-tag status-failed">同步失败</span></td>
+                        <td>2023-10-16 11:06:12</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSyncDetail('SO20231016003')">
+                                    <i class="fa fa-eye"></i> 详情
+                                </button>
+                                <button class="layui-btn layui-btn-normal layui-btn-xs" onclick="syncOrder('SO20231016003')">
+                                    <i class="fa fa-refresh"></i> 重试
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" lay-skin="primary" data-id="SO20231016004"></td>
+                        <td>SO20231016004</td>
+                        <td>PT202310160004</td>
+                        <td><span class="system-tag">订单管理系统</span></td>
+                        <td><span class="system-tag">客户管理系统</span></td>
+                        <td>2023-10-16 13:20:15</td>
+                        <td><span class="status-tag status-syncing">同步中</span></td>
+                        <td>2023-10-16 13:20:30</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSyncDetail('SO20231016004')">
+                                    <i class="fa fa-eye"></i> 详情
+                                </button>
+                                <button class="layui-btn layui-btn-danger layui-btn-xs" onclick="abortSync('SO20231016004')">
+                                    <i class="fa fa-stop"></i> 中止
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" lay-skin="primary" data-id="SO20231016005"></td>
+                        <td>SO20231016005</td>
+                        <td>JD202310160005</td>
+                        <td><span class="system-tag">电商平台-店铺1</span></td>
+                        <td><span class="system-tag">仓储管理系统</span></td>
+                        <td>2023-10-16 14:10:22</td>
+                        <td><span class="status-tag status-success">同步成功</span></td>
+                        <td>2023-10-16 14:11:05</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSyncDetail('SO20231016005')">
+                                    <i class="fa fa-eye"></i> 详情
+                                </button>
+                                <button class="layui-btn layui-btn-normal layui-btn-xs" onclick="syncOrder('SO20231016005')">
+                                    <i class="fa fa-refresh"></i> 重新同步
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="text-align: right;">
+                <div id="pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 同步详情弹窗 -->
+    <div class="layui-modal" id="detailModal" style="display: none; width: 800px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-exchange"></i> 订单同步详情 - <span id="detailOrderNo"></span>
+        </div>
+        <div class="layui-modal-body" style="max-height: 600px; overflow-y: auto;">
+            <div class="layui-tab" lay-allowClose="false">
+                <ul class="layui-tab-title">
+                    <li class="layui-this">同步信息</li>
+                    <li>订单详情</li>
+                    <li>同步日志</li>
+                    <li>错误信息</li>
+                </ul>
+                <div class="layui-tab-content">
+                    <!-- 同步信息 -->
+                    <div class="layui-tab-item layui-show">
+                        <table class="layui-table" lay-size="sm">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 120px;">订单编号</td>
+                                    <td id="syncOrderNo"></td>
+                                </tr>
+                                <tr>
+                                    <td>平台订单号</td>
+                                    <td id="syncPlatformNo"></td>
+                                </tr>
+                                <tr>
+                                    <td>来源系统</td>
+                                    <td id="syncSourceSystem"></td>
+                                </tr>
+                                <tr>
+                                    <td>目标系统</td>
+                                    <td id="syncTargetSystem"></td>
+                                </tr>
+                                <tr>
+                                    <td>同步状态</td>
+                                    <td id="syncStatusText"></td>
+                                </tr>
+                                <tr>
+                                    <td>订单创建时间</td>
+                                    <td id="syncCreateTime"></td>
+                                </tr>
+                                <tr>
+                                    <td>最后同步时间</td>
+                                    <td id="syncLastTime"></td>
+                                </tr>
+                                <tr>
+                                    <td>同步尝试次数</td>
+                                    <td id="syncAttempts"></td>
+                                </tr>
+                                <tr>
+                                    <td>同步耗时</td>
+                                    <td id="syncDuration"></td>
+                                </tr>
+                                <tr>
+                                    <td>同步模式</td>
+                                    <td id="syncMode"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 订单详情 -->
+                    <div class="layui-tab-item">
+                        <table class="layui-table" lay-size="sm">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 120px;">客户信息</td>
+                                    <td id="orderCustomer"></td>
+                                </tr>
+                                <tr>
+                                    <td>订单金额</td>
+                                    <td id="orderAmount"></td>
+                                </tr>
+                                <tr>
+                                    <td>支付方式</td>
+                                    <td id="orderPayment"></td>
+                                </tr>
+                                <tr>
+                                    <td>配送地址</td>
+                                    <td id="orderAddress"></td>
+                                </tr>
+                                <tr>
+                                    <td>订单状态</td>
+                                    <td id="orderStatus"></td>
+                                </tr>
+                                <tr>
+                                    <td>产品信息</td>
+                                    <td>
+                                        <table class="layui-table" lay-size="sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>产品名称</th>
+                                                    <th>规格</th>
+                                                    <th>数量</th>
+                                                    <th>单价</th>
+                                                    <th>金额</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="orderProducts">
+                                                <!-- 产品信息将通过JS动态生成 -->
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 同步日志 -->
+                    <div class="layui-tab-item">
+                        <div class="sync-log" id="syncLog">
+                            <!-- 同步日志将通过JS动态生成 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 错误信息 -->
+                    <div class="layui-tab-item" id="errorInfo">
+                        <!-- 错误信息将通过JS动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="closeDetail">关闭</button>
+            <button class="layui-btn" id="syncFromDetailBtn">
+                <i class="fa fa-refresh"></i> 同步订单
+            </button>
+        </div>
+    </div>
+
+    <!-- 批量同步弹窗 -->
+    <div class="layui-modal" id="batchSyncModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-refresh"></i> 批量同步设置
+        </div>
+        <div class="layui-modal-body">
+            <form class="layui-form" lay-filter="batchSyncForm">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">目标系统</label>
+                    <div class="layui-input-block">
+                        <select name="batchTargetSystem" lay-verify="required">
+                            <option value="">请选择目标系统</option>
+                            <option value="wms">仓储管理系统</option>
+                            <option value="tms">运输管理系统</option>
+                            <option value="finance">财务系统</option>
+                            <option value="crm">客户管理系统</option>
+                            <option value="all">全部关联系统</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">同步范围</label>
+                    <div class="layui-input-block">
+                        <radio name="syncScope" value="selected" checked> 已选择订单</radio>
+                        <radio name="syncScope" value="pending"> 所有待同步订单</radio>
+                        <radio name="syncScope" value="failed"> 所有同步失败订单</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">同步模式</label>
+                    <div class="layui-input-block">
+                        <radio name="syncMode" value="normal" checked> 正常同步</radio>
+                        <radio name="syncMode" value="force"> 强制覆盖同步</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" style="margin-top: 20px;">
+                    <div class="layui-progress" lay-showpercent="yes" id="batchProgress">
+                        <div class="layui-progress-bar" lay-percent="0%"></div>
+                    </div>
+                    <div id="batchSyncStatus" style="text-align: center; margin-top: 10px; color: #666; display: none;">
+                        准备开始同步...
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelBatchSync">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="confirmBatchSync">开始同步</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage', 'element'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage,
+                element = layui.element;
+
+            // 订单同步数据
+            var syncData = {
+                "SO20231016001": {
+                    orderNo: "SO20231016001",
+                    platformNo: "PT202310160001",
+                    sourceSystem: "ERP系统",
+                    sourceSystemCode: "erp",
+                    targetSystem: "仓储管理系统",
+                    targetSystemCode: "wms",
+                    createTime: "2023-10-16 09:25:12",
+                    status: "success",
+                    statusText: "同步成功",
+                    lastSyncTime: "2023-10-16 09:26:05",
+                    attempts: 1,
+                    duration: "53秒",
+                    syncMode: "自动同步",
+                    customer: "张三 (13800138000)",
+                    amount: "¥2,560.00",
+                    payment: "在线支付",
+                    address: "上海市浦东新区XX路XX号XX小区XX栋XX室 (李四 13900139000)",
+                    orderStatus: "已付款",
+                    products: [
+                        {name: "水润保湿精华液", spec: "50ml", quantity: 2, price: "105.00", amount: "210.00"},
+                        {name: "丝绒哑光口红", spec: "3.5g", quantity: 3, price: "158.00", amount: "474.00"},
+                        {name: "焕白面膜", spec: "10片装", quantity: 2, price: "238.00", amount: "476.00"}
+                    ],
+                    logs: [
+                        {time: "2023-10-16 09:25:15", type: "info", message: "订单进入同步队列"},
+                        {time: "2023-10-16 09:25:30", type: "info", message: "开始同步至仓储管理系统"},
+                        {time: "2023-10-16 09:25:45", type: "info", message: "正在验证订单数据格式"},
+                        {time: "2023-10-16 09:26:00", type: "info", message: "数据验证通过，发送同步请求"},
+                        {time: "2023-10-16 09:26:05", type: "success", message: "订单同步成功，仓储系统已接收"}
+                    ],
+                    error: null
+                },
+                "SO20231016002": {
+                    orderNo: "SO20231016002",
+                    platformNo: "JD202310160002",
+                    sourceSystem: "电商平台-店铺1",
+                    sourceSystemCode: "shop1",
+                    targetSystem: "财务系统",
+                    targetSystemCode: "finance",
+                    createTime: "2023-10-16 10:15:33",
+                    status: "pending",
+                    statusText: "待同步",
+                    lastSyncTime: "-",
+                    attempts: 0,
+                    duration: "-",
+                    syncMode: "手动同步",
+                    customer: "李四 (13900139000)",
+                    amount: "¥1,890.00",
+                    payment: "货到付款",
+                    address: "北京市朝阳区XX路XX号XX大厦XX层",
+                    orderStatus: "已下单",
+                    products: [
+                        {name: "男士古龙香水", spec: "100ml", quantity: 1, price: "328.00", amount: "328.00"},
+                        {name: "修护洗发水", spec: "300ml", quantity: 2, price: "89.00", amount: "178.00"}
+                    ],
+                    logs: [
+                        {time: "2023-10-16 10:15:35", type: "info", message: "订单已创建，等待同步"}
+                    ],
+                    error: null
+                },
+                "SO20231016003": {
+                    orderNo: "SO20231016003",
+                    platformNo: "TB202310160003",
+                    sourceSystem: "电商平台-店铺2",
+                    sourceSystemCode: "shop2",
+                    targetSystem: "运输管理系统",
+                    targetSystemCode: "tms",
+                    createTime: "2023-10-16 11:05:47",
+                    status: "failed",
+                    statusText: "同步失败",
+                    lastSyncTime: "2023-10-16 11:06:12",
+                    attempts: 1,
+                    duration: "25秒",
+                    syncMode: "自动同步",
+                    customer: "王五 (13700137000)",
+                    amount: "¥1,256.00",
+                    payment: "在线支付",
+                    address: "广州市天河区XX路XX号",
+                    orderStatus: "已付款",
+                    products: [
+                        {name: "温和洁面乳", spec: "120g", quantity: 3, price: "78.00", amount: "234.00"},
+                        {name: "保湿面霜", spec: "50g", quantity: 2, price: "198.00", amount: "396.00"}
+                    ],
+                    logs: [
+                        {time: "2023-10-16 11:05:50", type: "info", message: "订单进入同步队列"},
+                        {time: "2023-10-16 11:05:55", type: "info", message: "开始同步至运输管理系统"},
+                        {time: "2023-10-16 11:06:05", type: "info", message: "正在发送同步请求"},
+                        {time: "2023-10-16 11:06:12", type: "error", message: "同步请求失败，连接超时"}
+                    ],
+                    error: {
+                        code: "CONN_TIMEOUT",
+                        message: "与运输管理系统的连接超时，请检查网络连接和目标系统状态",
+                        solution: "1. 检查网络连接是否正常\n2. 确认运输管理系统是否正常运行\n3. 稍后重试同步操作"
+                    }
+                },
+                "SO20231016004": {
+                    orderNo: "SO20231016004",
+                    platformNo: "PT202310160004",
+                    sourceSystem: "订单管理系统",
+                    sourceSystemCode: "oms",
+                    targetSystem: "客户管理系统",
+                    targetSystemCode: "crm",
+                    createTime: "2023-10-16 13:20:15",
+                    status: "syncing",
+                    statusText: "同步中",
+                    lastSyncTime: "2023-10-16 13:20:30",
+                    attempts: 1,
+                    duration: "进行中",
+                    syncMode: "自动同步",
+                    customer: "赵六 (13600136000)",
+                    amount: "¥3,680.00",
+                    payment: "在线支付",
+                    address: "深圳市福田区XX路XX号",
+                    orderStatus: "已付款",
+                    products: [
+                        {name: "奢华修护精华", spec: "30ml", quantity: 1, price: "580.00", amount: "580.00"},
+                        {name: "高端女士香水", spec: "50ml", quantity: 1, price: "680.00", amount: "680.00"},
+                        {name: "焕白面膜", spec: "10片装", quantity: 4, price: "238.00", amount: "952.00"}
+                    ],
+                    logs: [
+                        {time: "2023-10-16 13:20:18", type: "info", message: "订单进入同步队列"},
+                        {time: "2023-10-16 13:20:30", type: "info", message: "开始同步至客户管理系统"},
+                        {time: "2023-10-16 13:20:45", type: "info", message: "正在同步客户信息"},
+                        {time: "2023-10-16 13:21:10", type: "info", message: "正在同步订单消费记录"}
+                    ],
+                    error: null
+                },
+                "SO20231016005": {
+                    orderNo: "SO20231016005",
+                    platformNo: "JD202310160005",
+                    sourceSystem: "电商平台-店铺1",
+                    sourceSystemCode: "shop1",
+                    targetSystem: "仓储管理系统",
+                    targetSystemCode: "wms",
+                    createTime: "2023-10-16 14:10:22",
+                    status: "success",
+                    statusText: "同步成功",
+                    lastSyncTime: "2023-10-16 14:11:05",
+                    attempts: 1,
+                    duration: "43秒",
+                    syncMode: "自动同步",
+                    customer: "钱七 (13500135000)",
+                    amount: "¥980.00",
+                    payment: "在线支付",
+                    address: "杭州市西湖区XX路XX号",
+                    orderStatus: "已付款",
+                    products: [
+                        {name: "修护洗发水", spec: "300ml", quantity: 2, price: "89.00", amount: "178.00"},
+                        {name: "防晒霜", spec: "60ml", quantity: 2, price: "158.00", amount: "316.00"}
+                    ],
+                    logs: [
+                        {time: "2023-10-16 14:10:25", type: "info", message: "订单进入同步队列"},
+                        {time: "2023-10-16 14:10:35", type: "info", message: "开始同步至仓储管理系统"},
+                        {time: "2023-10-16 14:10:50", type: "info", message: "正在验证订单数据格式"},
+                        {time: "2023-10-16 14:11:00", type: "info", message: "数据验证通过，发送同步请求"},
+                        {time: "2023-10-16 14:11:05", type: "success", message: "订单同步成功，仓储系统已接收"}
+                    ],
+                    error: null
+                }
+            };
+
+            // 查看同步详情
+            window.viewSyncDetail = function(orderNo) {
+                var order = syncData[orderNo];
+                if (!order) return;
+
+                // 填充同步信息
+                $('#detailOrderNo').text(order.orderNo);
+                $('#syncOrderNo').text(order.orderNo);
+                $('#syncPlatformNo').text(order.platformNo);
+                $('#syncSourceSystem').html(`<span class="system-tag">${order.sourceSystem}</span>`);
+                $('#syncTargetSystem').html(`<span class="system-tag">${order.targetSystem}</span>`);
+                $('#syncStatusText').html(`<span class="status-tag status-${order.status}">${order.statusText}</span>`);
+                $('#syncCreateTime').text(order.createTime);
+                $('#syncLastTime').text(order.lastSyncTime);
+                $('#syncAttempts').text(order.attempts);
+                $('#syncDuration').text(order.duration);
+                $('#syncMode').text(order.syncMode);
+
+                // 填充订单详情
+                $('#orderCustomer').text(order.customer);
+                $('#orderAmount').text(order.amount);
+                $('#orderPayment').text(order.payment);
+                $('#orderAddress').text(order.address);
+                $('#orderStatus').text(order.orderStatus);
+
+                // 填充产品信息
+                var productHtml = '';
+                order.products.forEach(product => {
+                    productHtml += `
+                        <tr>
+                            <td>${product.name}</td>
+                            <td>${product.spec}</td>
+                            <td>${product.quantity}</td>
+                            <td>¥${product.price}</td>
+                            <td>¥${product.amount}</td>
+                        </tr>
+                    `;
+                });
+                $('#orderProducts').html(productHtml);
+
+                // 填充同步日志
+                var logHtml = '';
+                order.logs.forEach(log => {
+                    logHtml += `
+                        <div class="log-item">
+                            <span class="log-time">${log.time}</span>
+                            <span class="log-${log.type}">${log.message}</span>
+                        </div>
+                    `;
+                });
+                $('#syncLog').html(logHtml);
+
+                // 填充错误信息
+                var errorHtml = '';
+                if (order.error) {
+                    errorHtml = `
+                        <div class="layui-card layui-card-danger">
+                            <div class="layui-card-header">错误代码: ${order.error.code}</div>
+                            <div class="layui-card-body">
+                                <div style="margin-bottom: 15px;">
+                                    <strong>错误信息:</strong>
+                                    <div style="margin-top: 5px;">${order.error.message}</div>
+                                </div>
+                                <div>
+                                    <strong>解决方案:</strong>
+                                    <div style="margin-top: 5px; white-space: pre-line;">${order.error.solution}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    errorHtml = '<div style="text-align: center; padding: 20px; color: #666;">暂无错误信息</div>';
+                }
+                $('#errorInfo').html(errorHtml);
+
+                // 显示弹窗
+                $('#detailModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 同步订单
+            window.syncOrder = function(orderNo) {
+                var order = syncData[orderNo];
+                if (!order) return;
+
+                // 显示加载动画
+                var loadIndex = layer.load(2, {
+                    shade: 0.5
+                });
+
+                // 模拟同步过程
+                setTimeout(function() {
+                    layer.close(loadIndex);
+                    
+                    // 随机模拟成功或失败（仅作演示）
+                    var success = Math.random() > 0.3;
+                    
+                    if (success) {
+                        layer.msg(`订单 ${orderNo} 同步成功`, {icon: 1});
+                    } else {
+                        layer.msg(`订单 ${orderNo} 同步失败`, {icon: 2});
+                    }
+                }, 2000);
+            };
+
+            // 中止同步
+            window.abortSync = function(orderNo) {
+                layer.confirm(`确定要中止订单 ${orderNo} 的同步过程吗？`, {
+                    icon: 3,
+                    title: '确认中止'
+                }, function(index) {
+                    layer.close(index);
+                    layer.msg(`订单 ${orderNo} 同步已中止`, {icon: 1});
+                });
+            };
+
+            // 关闭详情弹窗
+            $('#closeDetail').click(function() {
+                $('#detailModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 从详情页同步
+            $('#syncFromDetailBtn').click(function() {
+                var orderNo = $('#detailOrderNo').text();
+                $('#detailModal').hide();
+                $('.layui-modal-shade').remove();
+                syncOrder(orderNo);
+            });
+
+            // 批量同步
+            $('#syncAllBtn').click(function() {
+                // 检查选中的订单数量
+                var checkedCount = $('input[type="checkbox"][data-id]:checked').length;
+                
+                if (checkedCount === 0) {
+                    layer.confirm('您没有选择任何订单，是否同步所有待同步订单？', {
+                        icon: 3,
+                        title: '确认同步'
+                    }, function(index) {
+                        layer.close(index);
+                        showBatchSyncModal();
+                    });
+                } else {
+                    showBatchSyncModal();
+                }
+            });
+
+            // 显示批量同步弹窗
+            function showBatchSyncModal() {
+                // 重置进度条
+                element.progress('batchProgress', '0%');
+                $('#batchSyncStatus').hide();
+                
+                // 刷新表单
+                form.render();
+                
+                // 显示弹窗
+                $('#batchSyncModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            }
+
+            // 重试失败订单
+            $('#retryFailedBtn').click(function() {
+                layer.confirm('确定要重试所有同步失败的订单吗？', {
+                    icon: 3,
+                    title: '确认重试'
+                }, function(index) {
+                    layer.close(index);
+                    
+                    // 模拟批量同步过程
+                    showBatchSyncModal();
+                    // 自动选择失败订单选项
+                    $('input[name="syncScope"][value="failed"]').prop('checked', true);
+                    form.render('radio');
+                });
+            });
+
+            // 取消批量同步
+            $('#cancelBatchSync').click(function() {
+                $('#batchSyncModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 确认批量同步
+            form.on('submit(confirmBatchSync)', function(data) {
+                // 隐藏按钮，显示进度
+                $('#batchSyncStatus').text('正在同步...').show();
+                $('.layui-modal-footer').hide();
+                
+                // 模拟进度
+                var progress = 0;
+                var interval = setInterval(function() {
+                    progress += Math.floor(Math.random() * 10) + 1;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        $('#batchSyncStatus').text('同步完成！');
+                        
+                        // 3秒后关闭弹窗
+                        setTimeout(function() {
+                            $('#batchSyncModal').hide();
+                            $('.layui-modal-shade').remove();
+                            $('.layui-modal-footer').show();
+                            layer.msg('批量同步操作已完成', {icon: 1});
+                        }, 1500);
+                    }
+                    element.progress('batchProgress', progress + '%');
+                }, 500);
+                
+                return false;
+            });
+
+            // 全选/取消全选
+            form.on('checkbox(checkAll)', function(data) {
+                var checked = data.elem.checked;
+                $('input[type="checkbox"][data-id]').prop('checked', checked);
+                form.render('checkbox');
+            });
+
+            // 搜索订单
+            $('#searchBtn').click(function() {
+                var keyword = $('#orderSearch').val().toLowerCase();
+                // 实际应用中这里会根据关键词筛选订单
+                layer.msg('搜索订单：' + keyword, {icon: 1});
+            });
+
+            // 初始化分页
+            laypage.render({
+                elem: 'pagination',
+                count: 156, // 数据总数
+                limit: 10,
+                limits: [5, 10, 20, 50],
+                layout: ['prev', 'page', 'next', 'count', 'limit'],
+                jump: function(obj) {
+                    // 分页切换时触发
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+    

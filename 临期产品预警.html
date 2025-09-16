@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>临期产品预警系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-normal { background-color: #4CAF50; } /* 正常 */
+        .status-warning { background-color: #FF9800; } /* 临期预警 */
+        .status-expired { background-color: #F44336; } /* 已过期 */
+        
+        .shelf-life-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #eee;
+            margin: 5px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        .shelf-life-progress {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .shelf-life-progress.normal { background-color: #4CAF50; }
+        .shelf-life-progress.warning { background-color: #FF9800; }
+        .shelf-life-progress.expired { background-color: #F44336; }
+        
+        .expire-date {
+            font-weight: 500;
+        }
+        .expire-soon {
+            color: #F44336;
+            font-weight: bold;
+        }
+        
+        .disposal-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+        .disposal-promo { background-color: #e8f5e9; color: #2e7d32; }
+        .disposal-return { background-color: #fff3e0; color: #ef6c00; }
+        .disposal-discard { background-color: #ffebee; color: #c62828; }
+        
+        .stat-card {
+            text-align: center;
+            padding: 15px 0;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fa fa-calendar-times-o" style="color: #F44336;"></i> 临期产品预警
+        </div>
+        <div>
+            <button class="layui-btn layui-btn-primary" id="exportBtn">
+                <i class="fa fa-download"></i> 导出临期清单
+            </button>
+            <button class="layui-btn" id="batchHandleBtn">
+                <i class="fa fa-cog"></i> 批量处理
+            </button>
+        </div>
+    </div>
+
+    <!-- 临期产品统计 -->
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md3">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #F44336;">12</div>
+                <div class="stat-label">已过期产品</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #FF9800;">28</div>
+                <div class="stat-label">30天内临期产品</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #FF9800;">45</div>
+                <div class="stat-label">60天内临期产品</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #4CAF50;">216</div>
+                <div class="stat-label">正常保质期产品</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 临期产品分析 -->
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header">临期产品分类分布</div>
+                <div class="layui-card-body">
+                    <div style="height: 250px;">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header">临期时间分布</div>
+                <div class="layui-card-body">
+                    <div style="height: 250px;">
+                        <canvas id="timeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 临期产品列表 -->
+    <div class="layui-card">
+        <div class="layui-card-header">
+            临期产品清单
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form">
+                <div class="layui-input-inline" style="width: 200px;">
+                    <input type="text" name="keyword" placeholder="搜索商品名称/编码" autocomplete="off" class="layui-input">
+                </div>
+                <div class="layui-input-inline" style="width: 180px;">
+                    <select name="category">
+                        <option value="">全部分类</option>
+                        <option value="food">食品饮料</option>
+                        <option value="cosmetics">美妆护肤</option>
+                        <option value="daily">日用百货</option>
+                    </select>
+                </div>
+                <div class="layui-input-inline" style="width: 180px;">
+                    <select name="status">
+                        <option value="">全部状态</option>
+                        <option value="expired">已过期</option>
+                        <option value="warning">临期预警</option>
+                        <option value="normal">正常</option>
+                    </select>
+                </div>
+                <div class="layui-input-inline" style="width: 180px;">
+                    <select name="expireRange">
+                        <option value="">全部期限</option>
+                        <option value="7">7天内过期</option>
+                        <option value="30">30天内过期</option>
+                        <option value="60">60天内过期</option>
+                        <option value="90">90天内过期</option>
+                    </select>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchExpiring">
+                    <i class="fa fa-search"></i> 搜索
+                </button>
+                <button class="layui-btn layui-btn-primary" id="refreshList">
+                    <i class="fa fa-refresh"></i> 刷新
+                </button>
+            </div>
+
+            <table class="layui-table" lay-size="sm" style="margin-top: 15px;">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" lay-skin="primary" id="checkAll">
+                        </th>
+                        <th>商品信息</th>
+                        <th>生产日期</th>
+                        <th>过期日期</th>
+                        <th>剩余天数</th>
+                        <th>当前库存</th>
+                        <th>状态</th>
+                        <th>处理建议</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 已过期 -->
+                    <tr>
+                        <td>
+                            <input type="checkbox" lay-skin="primary" name="productCheck" value="P001">
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">草莓味酸奶</div>
+                            <div style="font-size: 12px; color: #666;">编码：P001 | 规格：200ml/盒</div>
+                        </td>
+                        <td>2023-06-15</td>
+                        <td class="expire-date expire-soon">2023-10-10</td>
+                        <td style="color: #F44336; font-weight: bold;">已过期6天</td>
+                        <td>15</td>
+                        <td>
+                            <span class="status-tag status-expired">已过期</span>
+                            <div class="shelf-life-bar">
+                                <div class="shelf-life-progress expired" style="width: 100%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="disposal-tag disposal-discard">销毁处理</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-danger" onclick="handleProduct('P001')">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 7天内临期 -->
+                    <tr>
+                        <td>
+                            <input type="checkbox" lay-skin="primary" name="productCheck" value="P002">
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">保湿补水面膜</div>
+                            <div style="font-size: 12px; color: #666;">编码：P002 | 规格：5片/盒</div>
+                        </td>
+                        <td>2022-10-20</td>
+                        <td class="expire-date expire-soon">2023-10-22</td>
+                        <td style="color: #F44336; font-weight: bold;">剩余6天</td>
+                        <td>32</td>
+                        <td>
+                            <span class="status-tag status-warning">临期预警</span>
+                            <div class="shelf-life-bar">
+                                <div class="shelf-life-progress warning" style="width: 95%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="disposal-tag disposal-promo">促销清仓</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-warning" onclick="handleProduct('P002')">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 30天内临期 -->
+                    <tr>
+                        <td>
+                            <input type="checkbox" lay-skin="primary" name="productCheck" value="P003">
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">燕麦能量棒</div>
+                            <div style="font-size: 12px; color: #666;">编码：P003 | 规格：50g/条</div>
+                        </td>
+                        <td>2023-07-10</td>
+                        <td class="expire-date">2023-11-05</td>
+                        <td style="color: #FF9800; font-weight: bold;">剩余20天</td>
+                        <td>45</td>
+                        <td>
+                            <span class="status-tag status-warning">临期预警</span>
+                            <div class="shelf-life-bar">
+                                <div class="shelf-life-progress warning" style="width: 85%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="disposal-tag disposal-promo">买一送一</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-warning" onclick="handleProduct('P003')">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 60天内临期 -->
+                    <tr>
+                        <td>
+                            <input type="checkbox" lay-skin="primary" name="productCheck" value="P004">
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">氨基酸洁面乳</div>
+                            <div style="font-size: 12px; color: #666;">编码：P004 | 规格：100g/支</div>
+                        </td>
+                        <td>2022-05-01</td>
+                        <td class="expire-date">2023-12-01</td>
+                        <td style="color: #FF9800;">剩余47天</td>
+                        <td>18</td>
+                        <td>
+                            <span class="status-tag status-warning">临期预警</span>
+                            <div class="shelf-life-bar">
+                                <div class="shelf-life-progress warning" style="width: 75%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="disposal-tag disposal-promo">折扣促销</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-warning" onclick="handleProduct('P004')">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 正常商品 -->
+                    <tr>
+                        <td>
+                            <input type="checkbox" lay-skin="primary" name="productCheck" value="P005">
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">天然植物洗发水</div>
+                            <div style="font-size: 12px; color: #666;">编码：P005 | 规格：300ml/瓶</div>
+                        </td>
+                        <td>2023-01-15</td>
+                        <td class="expire-date">2024-07-15</td>
+                        <td>剩余272天</td>
+                        <td>67</td>
+                        <td>
+                            <span class="status-tag status-normal">正常</span>
+                            <div class="shelf-life-bar">
+                                <div class="shelf-life-progress normal" style="width: 40%;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="disposal-tag">无需处理</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-primary" onclick="viewProduct('P005')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="text-align: right;">
+                <div id="pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 产品处理弹窗 -->
+    <div class="layui-modal" id="handleModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title" id="handleModalTitle">
+            <i class="fa fa-cog"></i> 临期产品处理 - 草莓味酸奶
+        </div>
+        <div class="layui-modal-body">
+            <form class="layui-form" lay-filter="handleForm">
+                <input type="hidden" name="productId" id="productId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">商品编码</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="productCode" id="productCode" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">商品名称</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="productName" id="productName" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">过期日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="expireDate" id="expireDate" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">剩余天数</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="remainingDays" id="remainingDays" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">当前库存</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="currentStock" id="currentStock" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理方式</label>
+                    <div class="layui-input-block">
+                        <radio name="disposalMethod" value="promotion">促销清仓</radio>
+                        <radio name="disposalMethod" value="returnSupplier">退回供应商</radio>
+                        <radio name="disposalMethod" value="donate">捐赠处理</radio>
+                        <radio name="disposalMethod" value="discard" checked>销毁处理</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" id="promotionDetail" style="display: none;">
+                    <label class="layui-form-label">促销详情</label>
+                    <div class="layui-input-block">
+                        <select name="promotionType">
+                            <option value="discount">折扣销售</option>
+                            <option value="buyOneGetOne">买一送一</option>
+                            <option value="bundle">捆绑销售</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理数量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="handleQuantity" lay-verify="required|number" min="1" 
+                            id="handleQuantity" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理备注</label>
+                    <div class="layui-input-block">
+                        <textarea name="handleRemark" class="layui-textarea" rows="3" 
+                            placeholder="请输入处理情况说明"></textarea>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="handler" lay-verify="required" placeholder="请输入处理人姓名" 
+                            class="layui-input">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelHandle">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitHandle">确认处理</button>
+        </div>
+    </div>
+
+    <!-- 批量处理弹窗 -->
+    <div class="layui-modal" id="batchHandleModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-cogs"></i> 批量处理临期产品
+        </div>
+        <div class="layui-modal-body">
+            <form class="layui-form" lay-filter="batchHandleForm">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">选中数量</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="selectedCount" id="selectedCount" value="0" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">统一处理方式</label>
+                    <div class="layui-input-block">
+                        <radio name="batchMethod" value="promotion">促销清仓</radio>
+                        <radio name="batchMethod" value="returnSupplier">退回供应商</radio>
+                        <radio name="batchMethod" value="discard" checked>销毁处理</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" id="batchPromotionDetail" style="display: none;">
+                    <label class="layui-form-label">促销详情</label>
+                    <div class="layui-input-block">
+                        <select name="batchPromotionType">
+                            <option value="discount">折扣销售</option>
+                            <option value="buyOneGetOne">买一送一</option>
+                            <option value="bundle">捆绑销售</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理备注</label>
+                    <div class="layui-input-block">
+                        <textarea name="batchRemark" class="layui-textarea" rows="3" 
+                            placeholder="请输入批量处理说明"></textarea>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="batchHandler" lay-verify="required" placeholder="请输入处理人姓名" 
+                            class="layui-input">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelBatchHandle">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitBatchHandle">确认批量处理</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage;
+            
+            // 产品数据
+            var products = {
+                "P001": {
+                    id: "P001",
+                    code: "P001",
+                    name: "草莓味酸奶",
+                    category: "food",
+                    productionDate: "2023-06-15",
+                    expireDate: "2023-10-10",
+                    remainingDays: "已过期6天",
+                    stock: 15,
+                    status: "expired",
+                    statusText: "已过期"
+                },
+                "P002": {
+                    id: "P002",
+                    code: "P002",
+                    name: "保湿补水面膜",
+                    category: "cosmetics",
+                    productionDate: "2022-10-20",
+                    expireDate: "2023-10-22",
+                    remainingDays: "剩余6天",
+                    stock: 32,
+                    status: "warning",
+                    statusText: "临期预警"
+                },
+                "P003": {
+                    id: "P003",
+                    code: "P003",
+                    name: "燕麦能量棒",
+                    category: "food",
+                    productionDate: "2023-07-10",
+                    expireDate: "2023-11-05",
+                    remainingDays: "剩余20天",
+                    stock: 45,
+                    status: "warning",
+                    statusText: "临期预警"
+                },
+                "P004": {
+                    id: "P004",
+                    code: "P004",
+                    name: "氨基酸洁面乳",
+                    category: "cosmetics",
+                    productionDate: "2022-05-01",
+                    expireDate: "2023-12-01",
+                    remainingDays: "剩余47天",
+                    stock: 18,
+                    status: "warning",
+                    statusText: "临期预警"
+                },
+                "P005": {
+                    id: "P005",
+                    code: "P005",
+                    name: "天然植物洗发水",
+                    category: "daily",
+                    productionDate: "2023-01-15",
+                    expireDate: "2024-07-15",
+                    remainingDays: "剩余272天",
+                    stock: 67,
+                    status: "normal",
+                    statusText: "正常"
+                }
+            };
+            
+            // 初始化图表
+            initCharts();
+            
+            // 初始化分页
+            laypage.render({
+                elem: 'pagination',
+                count: 301,
+                limit: 10,
+                layout: ['prev', 'page', 'next', 'count']
+            });
+            
+            // 初始化图表
+            function initCharts() {
+                // 临期产品分类分布图表
+                const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+                new Chart(categoryCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['食品饮料', '美妆护肤', '日用百货', '其他'],
+                        datasets: [{
+                            data: [42, 23, 10, 5],
+                            backgroundColor: [
+                                '#F44336',
+                                '#FF9800',
+                                '#4CAF50',
+                                '#9E9E9E'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+                
+                // 临期时间分布图表
+                const timeCtx = document.getElementById('timeChart').getContext('2d');
+                new Chart(timeCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['已过期', '7天内', '30天内', '60天内', '90天内'],
+                        datasets: [{
+                            label: '产品数量',
+                            data: [12, 8, 20, 17, 25],
+                            backgroundColor: [
+                                '#F44336',
+                                '#EF5350',
+                                '#FF9800',
+                                '#FFB74D',
+                                '#FFCC80'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 处理临期产品
+            window.handleProduct = function(productId) {
+                const product = products[productId];
+                if (!product) return;
+                
+                // 填充表单数据
+                $('#handleModalTitle').html(`<i class="fa fa-cog"></i> 临期产品处理 - ${product.name}`);
+                $('#productId').val(product.id);
+                $('#productCode').val(product.code);
+                $('#productName').val(product.name);
+                $('#expireDate').val(product.expireDate);
+                $('#remainingDays').val(product.remainingDays);
+                $('#currentStock').val(product.stock);
+                $('#handleQuantity').val(product.stock);
+                
+                // 显示弹窗
+                $('#handleModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+            
+            // 查看产品详情
+            window.viewProduct = function(productId) {
+                // 实际应用中可以打开详情弹窗
+                const product = products[productId];
+                layer.alert(`
+                    <div style="font-weight: bold; margin-bottom: 10px;">${product.name}</div>
+                    <div>编码：${product.code}</div>
+                    <div>生产日期：${product.productionDate}</div>
+                    <div>过期日期：${product.expireDate}</div>
+                    <div>剩余天数：${product.remainingDays}</div>
+                    <div>当前库存：${product.stock}</div>
+                    <div>状态：<span class="status-tag status-${product.status}">${product.statusText}</span></div>
+                `, {
+                    title: '<i class="fa fa-eye"></i> 产品详情',
+                    area: ['400px', 'auto']
+                });
+            };
+            
+            // 打开批量处理弹窗
+            $('#batchHandleBtn').click(function() {
+                const checkedCount = $("input[name='productCheck']:checked").length;
+                $('#selectedCount').val(checkedCount);
+                
+                if (checkedCount === 0) {
+                    layer.msg('请先选择需要处理的产品', {icon: 2});
+                    return;
+                }
+                
+                $('#batchHandleModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            });
+            
+            // 关闭弹窗
+            $('#cancelHandle, #cancelBatchHandle').click(function() {
+                $('#handleModal, #batchHandleModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+            
+            // 处理方式切换
+            form.on('radio(disposalMethod)', function(data) {
+                if (data.value === 'promotion') {
+                    $('#promotionDetail').show();
+                } else {
+                    $('#promotionDetail').hide();
+                }
+            });
+            
+            // 批量处理方式切换
+            form.on('radio(batchMethod)', function(data) {
+                if (data.value === 'promotion') {
+                    $('#batchPromotionDetail').show();
+                } else {
+                    $('#batchPromotionDetail').hide();
+                }
+            });
+            
+            // 全选/取消全选
+            form.on('checkbox(checkAll)', function(data) {
+                const checked = data.elem.checked;
+                $("input[name='productCheck']").prop('checked', checked);
+                form.render('checkbox');
+            });
+            
+            // 提交处理
+            form.on('submit(submitHandle)', function(data) {
+                const productId = $('#productId').val();
+                const product = products[productId];
+                
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#handleModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg(`${product.name} 处理完成`, {icon: 1});
+                }, 1000);
+                
+                return false;
+            });
+            
+            // 提交批量处理
+            form.on('submit(submitBatchHandle)', function(data) {
+                const count = $('#selectedCount').val();
+                
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#batchHandleModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg(`已完成 ${count} 个产品的批量处理`, {icon: 1});
+                }, 1500);
+                
+                return false;
+            });
+            
+            // 导出临期清单
+            $('#exportBtn').click(function() {
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    layer.msg('临期产品清单导出成功', {icon: 1});
+                }, 1000);
+            });
+            
+            // 刷新列表
+            $('#refreshList').click(function() {
+                const loadIndex = layer.load(1);
+                setTimeout(function() {
+                    layer.close(loadIndex);
+                    layer.msg('临期产品列表已刷新', {icon: 1});
+                }, 800);
+            });
+        });
+    </script>
+</body>
+</html>
+    

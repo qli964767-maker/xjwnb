@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>角色创建与分配管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body { background: #f5f5f5; padding: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .role-card { background: #fff; border-radius: 4px; padding: 15px; margin-bottom: 15px; cursor: pointer; transition: all 0.2s; }
+        .role-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .role-card.active { border-left: 3px solid #2196F3; }
+        .role-name { font-weight: 500; margin-bottom: 5px; }
+        .role-desc { color: #666; font-size: 13px; margin-bottom: 8px; }
+        .role-count { color: #999; font-size: 12px; }
+        .operation-bar { padding: 10px 15px; background: #fff; border-radius: 4px; margin-bottom: 15px; display: flex; justify-content: space-between; }
+        .permission-group { margin-bottom: 15px; }
+        .permission-group-title { font-weight: 500; margin-bottom: 8px; padding-left: 5px; border-left: 2px solid #2196F3; }
+        .permission-item { display: flex; align-items: center; margin-bottom: 8px; }
+        .permission-label { margin-left: 8px; }
+        .tab-content { background: #fff; border-radius: 4px; padding: 15px; min-height: 400px; }
+        .user-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+        .user-info { display: flex; align-items: center; }
+        .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: #eee; margin-right: 10px; overflow: hidden; }
+        .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="header">
+        <h2 style="margin: 0; font-size: 16px;"><i class="fa fa-users" style="color: #2196F3;"></i> 角色创建与分配管理</h2>
+        <div>
+            <button class="layui-btn layui-btn-sm" id="saveBtn"><i class="fa fa-save"></i> 保存设置</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="refreshBtn"><i class="fa fa-refresh"></i> 刷新</button>
+        </div>
+    </div>
+
+    <div class="layui-row layui-col-space10">
+        <!-- 左侧角色列表 -->
+        <div class="layui-col-md3">
+            <div class="operation-bar">
+                <div>角色列表</div>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="addRoleBtn"><i class="fa fa-plus"></i> 新增角色</button>
+            </div>
+            
+            <div class="role-list">
+                <div class="role-card active" data-role-id="1">
+                    <div class="role-name">系统管理员</div>
+                    <div class="role-desc">拥有系统全部操作权限</div>
+                    <div class="role-count"><i class="fa fa-user"></i> 3名用户</div>
+                </div>
+                
+                <div class="role-card" data-role-id="2">
+                    <div class="role-name">库存主管</div>
+                    <div class="role-desc">管理库存相关的所有操作</div>
+                    <div class="role-count"><i class="fa fa-user"></i> 5名用户</div>
+                </div>
+                
+                <div class="role-card" data-role-id="3">
+                    <div class="role-name">仓库管理员</div>
+                    <div class="role-desc">负责出入库操作和库存盘点</div>
+                    <div class="role-count"><i class="fa fa-user"></i> 12名用户</div>
+                </div>
+                
+                <div class="role-card" data-role-id="4">
+                    <div class="role-name">采购专员</div>
+                    <div class="role-desc">负责采购计划和入库管理</div>
+                    <div class="role-count"><i class="fa fa-user"></i> 4名用户</div>
+                </div>
+                
+                <div class="role-card" data-role-id="5">
+                    <div class="role-name">普通员工</div>
+                    <div class="role-desc">仅查看权限，无操作权限</div>
+                    <div class="role-count"><i class="fa fa-user"></i> 28名用户</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧角色详情 -->
+        <div class="layui-col-md9">
+            <div class="layui-tab" lay-allowClose="false">
+                <ul class="layui-tab-title">
+                    <li class="layui-this" lay-id="baseInfo">基本信息</li>
+                    <li lay-id="permission">权限配置</li>
+                    <li lay-id="userAssignment">用户分配</li>
+                </ul>
+                
+                <div class="layui-tab-content">
+                    <!-- 基本信息 -->
+                    <div class="layui-tab-item layui-show tab-content">
+                        <form class="layui-form" lay-filter="roleForm">
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">角色名称</label>
+                                <div class="layui-input-block">
+                                    <input type="text" name="roleName" value="系统管理员" class="layui-input">
+                                </div>
+                            </div>
+                            
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">角色标识</label>
+                                <div class="layui-input-block">
+                                    <input type="text" name="roleKey" value="admin" class="layui-input" readonly>
+                                </div>
+                            </div>
+                            
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">角色描述</label>
+                                <div class="layui-input-block">
+                                    <textarea name="roleDesc" class="layui-textarea" rows="3">拥有系统全部操作权限</textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">角色状态</label>
+                                <div class="layui-input-block">
+                                    <input type="radio" name="roleStatus" value="1" title="启用" checked>
+                                    <input type="radio" name="roleStatus" value="0" title="禁用">
+                                </div>
+                            </div>
+                            
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">数据权限</label>
+                                <div class="layui-input-block">
+                                    <select name="dataScope">
+                                        <option value="1" selected>全部数据权限</option>
+                                        <option value="2">自定义数据权限</option>
+                                        <option value="3">本部门数据权限</option>
+                                        <option value="4">本部门及以下数据权限</option>
+                                        <option value="5">仅本人数据权限</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- 权限配置 -->
+                    <div class="layui-tab-item tab-content">
+                        <div class="permission-group">
+                            <div class="permission-group-title">系统管理</div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="sys:user:manage" lay-skin="primary" checked>
+                                <div class="permission-label">用户管理</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="sys:role:manage" lay-skin="primary" checked>
+                                <div class="permission-label">角色管理</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="sys:menu:manage" lay-skin="primary" checked>
+                                <div class="permission-label">菜单管理</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="sys:dict:manage" lay-skin="primary" checked>
+                                <div class="permission-label">字典管理</div>
+                            </div>
+                        </div>
+                        
+                        <div class="permission-group">
+                            <div class="permission-group-title">库存管理</div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="inventory:view" lay-skin="primary" checked>
+                                <div class="permission-label">库存查看</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="inventory:add" lay-skin="primary" checked>
+                                <div class="permission-label">库存新增</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="inventory:edit" lay-skin="primary" checked>
+                                <div class="permission-label">库存编辑</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="inventory:delete" lay-skin="primary" checked>
+                                <div class="permission-label">库存删除</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="inventory:export" lay-skin="primary" checked>
+                                <div class="permission-label">库存导出</div>
+                            </div>
+                        </div>
+                        
+                        <div class="permission-group">
+                            <div class="permission-group-title">出入库管理</div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="stock:in:manage" lay-skin="primary" checked>
+                                <div class="permission-label">入库管理</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="stock:out:manage" lay-skin="primary" checked>
+                                <div class="permission-label">出库管理</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="stock:transfer:manage" lay-skin="primary" checked>
+                                <div class="permission-label">调拨管理</div>
+                            </div>
+                        </div>
+                        
+                        <div class="permission-group">
+                            <div class="permission-group-title">报表管理</div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="report:inventory:view" lay-skin="primary" checked>
+                                <div class="permission-label">库存报表查看</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="report:turnover:view" lay-skin="primary" checked>
+                                <div class="permission-label">周转报表查看</div>
+                            </div>
+                            <div class="permission-item">
+                                <input type="checkbox" name="permission" value="report:value:view" lay-skin="primary" checked>
+                                <div class="permission-label">价值报表查看</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 用户分配 -->
+                    <div class="layui-tab-item tab-content">
+                        <div style="margin-bottom: 15px; display: flex; justify-content: space-between;">
+                            <div>已分配用户（3人）</div>
+                            <button class="layui-btn layui-btn-sm" id="assignUserBtn"><i class="fa fa-plus"></i> 分配用户</button>
+                        </div>
+                        
+                        <div class="user-list">
+                            <div class="user-item">
+                                <div class="user-info">
+                                    <div class="user-avatar">
+                                        <img src="https://picsum.photos/id/1/30/30" alt="用户头像">
+                                    </div>
+                                    <div>
+                                        <div>张三</div>
+                                        <div style="font-size: 12px; color: #666;">admin@example.com</div>
+                                    </div>
+                                </div>
+                                <button class="layui-btn layui-btn-xs layui-btn-danger unassign-btn"><i class="fa fa-times"></i> 移除</button>
+                            </div>
+                            
+                            <div class="user-item">
+                                <div class="user-info">
+                                    <div class="user-avatar">
+                                        <img src="https://picsum.photos/id/2/30/30" alt="用户头像">
+                                    </div>
+                                    <div>
+                                        <div>李四</div>
+                                        <div style="font-size: 12px; color: #666;">lisi@example.com</div>
+                                    </div>
+                                </div>
+                                <button class="layui-btn layui-btn-xs layui-btn-danger unassign-btn"><i class="fa fa-times"></i> 移除</button>
+                            </div>
+                            
+                            <div class="user-item">
+                                <div class="user-info">
+                                    <div class="user-avatar">
+                                        <img src="https://picsum.photos/id/3/30/30" alt="用户头像">
+                                    </div>
+                                    <div>
+                                        <div>王五</div>
+                                        <div style="font-size: 12px; color: #666;">wangwu@example.com</div>
+                                    </div>
+                                </div>
+                                <button class="layui-btn layui-btn-xs layui-btn-danger unassign-btn"><i class="fa fa-times"></i> 移除</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增角色弹窗 -->
+    <div id="addRoleModal" style="display: none;">
+        <form class="layui-form" lay-filter="addRoleForm">
+            <div class="layui-form-item">
+                <label class="layui-form-label">角色名称</label>
+                <div class="layui-input-block">
+                    <input type="text" name="newRoleName" placeholder="请输入角色名称" class="layui-input">
+                </div>
+            </div>
+            
+            <div class="layui-form-item">
+                <label class="layui-form-label">角色标识</label>
+                <div class="layui-input-block">
+                    <input type="text" name="newRoleKey" placeholder="请输入角色标识（英文）" class="layui-input">
+                </div>
+            </div>
+            
+            <div class="layui-form-item">
+                <label class="layui-form-label">角色描述</label>
+                <div class="layui-input-block">
+                    <textarea name="newRoleDesc" placeholder="请输入角色描述" class="layui-textarea" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="layui-form-item">
+                <label class="layui-form-label">角色状态</label>
+                <div class="layui-input-block">
+                    <input type="radio" name="newRoleStatus" value="1" title="启用" checked>
+                    <input type="radio" name="newRoleStatus" value="0" title="禁用">
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- 分配用户弹窗 -->
+    <div id="assignUserModal" style="display: none;">
+        <div style="padding: 10px;">
+            <div class="layui-form-item">
+                <div class="layui-input-block">
+                    <input type="text" placeholder="搜索用户" class="layui-input" id="userSearchInput">
+                </div>
+            </div>
+            
+            <div style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;">
+                <div class="user-item">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <img src="https://picsum.photos/id/4/30/30" alt="用户头像">
+                        </div>
+                        <div>
+                            <div>赵六</div>
+                            <div style="font-size: 12px; color: #666;">zhaoliu@example.com</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="userToAssign" value="4" lay-skin="primary">
+                </div>
+                
+                <div class="user-item">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <img src="https://picsum.photos/id/5/30/30" alt="用户头像">
+                        </div>
+                        <div>
+                            <div>孙七</div>
+                            <div style="font-size: 12px; color: #666;">sunqi@example.com</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="userToAssign" value="5" lay-skin="primary">
+                </div>
+                
+                <div class="user-item">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <img src="https://picsum.photos/id/6/30/30" alt="用户头像">
+                        </div>
+                        <div>
+                            <div>周八</div>
+                            <div style="font-size: 12px; color: #666;">zhouba@example.com</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="userToAssign" value="6" lay-skin="primary">
+                </div>
+            </div>
+            
+            <div style="text-align: right;">
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="cancelAssignBtn">取消</button>
+                <button class="layui-btn layui-btn-sm" id="confirmAssignBtn">确认分配</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'element'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                element = layui.element;
+            
+            // 角色选择
+            $('.role-card').click(function() {
+                $('.role-card').removeClass('active');
+                $(this).addClass('active');
+                // 实际应用中应加载对应角色的数据
+                var roleId = $(this).data('role-id');
+                loadRoleData(roleId);
+            });
+            
+            // 加载角色数据
+            function loadRoleData(roleId) {
+                // 模拟加载数据
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    // 这里实际应用中应根据roleId加载对应数据
+                }, 500);
+            }
+            
+            // 新增角色
+            $('#addRoleBtn').click(function() {
+                layer.open({
+                    type: 1,
+                    title: '新增角色',
+                    area: ['500px', '320px'],
+                    content: $('#addRoleModal'),
+                    btn: ['确定', '取消'],
+                    yes: function(index) {
+                        // 模拟表单提交
+                        layer.load(1);
+                        setTimeout(function() {
+                            layer.closeAll();
+                            layer.msg('角色创建成功', {icon: 1});
+                            // 实际应用中应刷新角色列表
+                        }, 500);
+                    },
+                    btn2: function(index) {
+                        layer.close(index);
+                    },
+                    end: function() {
+                        // 清空表单
+                        form.val('addRoleForm', {
+                            'newRoleName': '',
+                            'newRoleKey': '',
+                            'newRoleDesc': ''
+                        });
+                    }
+                });
+            });
+            
+            // 分配用户
+            $('#assignUserBtn').click(function() {
+                layer.open({
+                    type: 1,
+                    title: '分配用户',
+                    area: ['500px', '450px'],
+                    content: $('#assignUserModal'),
+                    btn: [],
+                    closeBtn: 1
+                });
+            });
+            
+            // 确认分配用户
+            $('#confirmAssignBtn').click(function() {
+                var checkedUsers = $('input[name="userToAssign"]:checked');
+                if (checkedUsers.length === 0) {
+                    layer.msg('请选择要分配的用户', {icon: 2});
+                    return;
+                }
+                
+                // 模拟分配用户
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('用户分配成功', {icon: 1});
+                    // 实际应用中应刷新用户列表
+                }, 500);
+            });
+            
+            // 取消分配
+            $('#cancelAssignBtn').click(function() {
+                layer.closeAll('page');
+            });
+            
+            // 移除用户
+            $('.unassign-btn').click(function() {
+                var $this = $(this);
+                layer.confirm('确定要将该用户从角色中移除吗？', {
+                    icon: 3,
+                    title: '提示'
+                }, function(index) {
+                    $this.closest('.user-item').remove();
+                    layer.close(index);
+                    layer.msg('用户已移除', {icon: 1});
+                    // 实际应用中应更新后台数据
+                });
+            });
+            
+            // 保存设置
+            $('#saveBtn').click(function() {
+                // 模拟保存数据
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('角色设置保存成功', {icon: 1});
+                }, 800);
+            });
+            
+            // 刷新
+            $('#refreshBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('数据已刷新', {icon: 1});
+                }, 500);
+            });
+            
+            // 用户搜索
+            $('#userSearchInput').on('input', function() {
+                var keyword = $(this).val().toLowerCase();
+                // 实际应用中应根据关键词筛选用户
+                console.log('搜索用户:', keyword);
+            });
+            
+            // 渲染表单
+            form.render();
+        });
+    </script>
+</body>
+</html>
+    

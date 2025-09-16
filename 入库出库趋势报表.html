@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>入库出库趋势报表</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        body { background: #f5f5f5; padding: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .stat-card { background: #fff; border-radius: 4px; padding: 12px; text-align: center; margin-bottom: 15px; }
+        .stat-value { font-size: 22px; font-weight: bold; margin: 5px 0; }
+        .stat-label { color: #666; font-size: 13px; }
+        .stat-change { font-size: 12px; }
+        .filter-panel { background: #fff; padding: 12px; border-radius: 4px; margin-bottom: 15px; }
+        .chart-container { background: #fff; border-radius: 4px; padding: 15px; margin-bottom: 15px; }
+        .chart-header { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+        .detail-table { background: #fff; border-radius: 4px; overflow: hidden; }
+        .table-header { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="header">
+        <h2 style="margin: 0; font-size: 16px;"><i class="fa fa-exchange" style="color: #2196F3;"></i> 入库出库趋势报表</h2>
+        <div>
+            <button class="layui-btn layui-btn-sm" id="exportBtn"><i class="fa fa-download"></i> 导出</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="refreshBtn"><i class="fa fa-refresh"></i> 刷新</button>
+        </div>
+    </div>
+
+    <!-- 核心统计数据 -->
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: #4CAF50;">1,845</div>
+                <div class="stat-label">本月入库总量</div>
+                <div class="stat-change" style="color: #4CAF50;"><i class="fa fa-arrow-up"></i> 8.2%</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: #F44336;">1,628</div>
+                <div class="stat-label">本月出库总量</div>
+                <div class="stat-change" style="color: #F44336;"><i class="fa fa-arrow-up"></i> 12.5%</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: #2196F3;">+217</div>
+                <div class="stat-label">本月库存净增</div>
+                <div class="stat-change" style="color: #F44336;"><i class="fa fa-arrow-down"></i> 15.3%</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: #FF9800;">93.2%</div>
+                <div class="stat-label">出库入库比</div>
+                <div class="stat-change" style="color: #4CAF50;"><i class="fa fa-arrow-up"></i> 3.8%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选条件 -->
+    <div class="filter-panel layui-form">
+        <div class="layui-row">
+            <div class="layui-col-md2">
+                <select name="period" class="layui-select layui-select-sm">
+                    <option value="day">按日</option>
+                    <option value="week" selected>按周</option>
+                    <option value="month">按月</option>
+                    <option value="quarter">按季度</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="dateRange" class="layui-select layui-select-sm">
+                    <option value="30">近30天</option>
+                    <option value="90" selected>近90天</option>
+                    <option value="180">近半年</option>
+                    <option value="365">近一年</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="category" class="layui-select layui-select-sm">
+                    <option value="" selected>全部分类</option>
+                    <option value="electronics">电子产品</option>
+                    <option value="clothing">服装鞋帽</option>
+                    <option value="food">食品饮料</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="warehouse" class="layui-select layui-select-sm">
+                    <option value="" selected>全部仓库</option>
+                    <option value="main">主仓库</option>
+                    <option value="east">东部仓</option>
+                    <option value="west">西部仓</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <button class="layui-btn layui-btn-sm">查询</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary">重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 趋势图表 -->
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md12">
+            <div class="chart-container">
+                <div class="chart-header">入库出库趋势对比</div>
+                <div style="height: 300px;">
+                    <canvas id="inOutTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md6">
+            <div class="chart-container">
+                <div class="chart-header">入库量分类占比</div>
+                <div style="height: 250px;">
+                    <canvas id="inCategoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md6">
+            <div class="chart-container">
+                <div class="chart-header">出库量分类占比</div>
+                <div style="height: 250px;">
+                    <canvas id="outCategoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 近期出入库明细 -->
+    <div class="detail-table">
+        <div class="table-header">
+            <div style="font-weight: 500;">近期出入库明细</div>
+            <div>
+                <input type="text" placeholder="搜索商品/单号" class="layui-input layui-input-sm" style="width: 200px; display: inline-block;">
+                <button class="layui-btn layui-btn-sm">搜索</button>
+            </div>
+        </div>
+        <table class="layui-table" lay-size="sm" style="margin: 0;">
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>单据编号</th>
+                    <th>商品名称</th>
+                    <th>分类</th>
+                    <th>类型</th>
+                    <th>数量</th>
+                    <th>仓库</th>
+                    <th>操作人</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2024-05-20</td>
+                    <td>IN2024052001</td>
+                    <td>智能手机A1</td>
+                    <td>电子产品</td>
+                    <td><span class="layui-badge layui-bg-green">入库</span></td>
+                    <td>50</td>
+                    <td>主仓库</td>
+                    <td>张三</td>
+                </tr>
+                <tr>
+                    <td>2024-05-20</td>
+                    <td>OUT2024052008</td>
+                    <td>休闲T恤</td>
+                    <td>服装鞋帽</td>
+                    <td><span class="layui-badge layui-bg-red">出库</span></td>
+                    <td>35</td>
+                    <td>东部仓</td>
+                    <td>李四</td>
+                </tr>
+                <tr>
+                    <td>2024-05-19</td>
+                    <td>IN2024051912</td>
+                    <td>矿泉水</td>
+                    <td>食品饮料</td>
+                    <td><span class="layui-badge layui-bg-green">入库</span></td>
+                    <td>200</td>
+                    <td>西部仓</td>
+                    <td>王五</td>
+                </tr>
+                <tr>
+                    <td>2024-05-19</td>
+                    <td>OUT2024051905</td>
+                    <td>无线耳机</td>
+                    <td>电子产品</td>
+                    <td><span class="layui-badge layui-bg-red">出库</span></td>
+                    <td>12</td>
+                    <td>主仓库</td>
+                    <td>赵六</td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="padding: 12px; text-align: right; border-top: 1px solid #eee;">
+            <div class="layui-laypage layui-laypage-default">
+                <span class="layui-laypage-count">共 136 条</span>
+                <a href="#" class="layui-laypage-prev">上一页</a>
+                <span class="layui-laypage-curr"><em>1</em></span>
+                <a href="#">2</a>
+                <a href="#">3</a>
+                <a href="#" class="layui-laypage-next">下一页</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer'], function() {
+            var form = layui.form,
+                layer = layui.layer;
+            
+            // 初始化图表
+            initCharts();
+            
+            // 图表初始化
+            function initCharts() {
+                // 入库出库趋势对比
+                new Chart(document.getElementById('inOutTrendChart'), {
+                    type: 'line',
+                    data: {
+                        labels: ['第1周', '第2周', '第3周', '第4周', '第5周', '第6周', '第7周', '第8周', '第9周', '第10周', '第11周', '第12周', '第13周'],
+                        datasets: [
+                            {
+                                label: '入库量',
+                                data: [185, 210, 195, 230, 245, 220, 250, 235, 260, 275, 265, 290, 310],
+                                borderColor: '#4CAF50',
+                                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                                tension: 0.3,
+                                fill: true
+                            },
+                            {
+                                label: '出库量',
+                                data: [160, 190, 185, 210, 220, 205, 230, 240, 235, 255, 260, 275, 280],
+                                borderColor: '#F44336',
+                                backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                                tension: 0.3,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, title: { display: true, text: '数量' } },
+                            x: { title: { display: true, text: '周' } }
+                        }
+                    }
+                });
+
+                // 入库量分类占比
+                new Chart(document.getElementById('inCategoryChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['电子产品', '服装鞋帽', '食品饮料', '其他'],
+                        datasets: [{
+                            data: [40, 25, 20, 15],
+                            backgroundColor: ['#2196F3', '#FF9800', '#4CAF50', '#9E9E9E']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' }
+                        }
+                    }
+                });
+
+                // 出库量分类占比
+                new Chart(document.getElementById('outCategoryChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['电子产品', '服装鞋帽', '食品饮料', '其他'],
+                        datasets: [{
+                            data: [35, 30, 25, 10],
+                            backgroundColor: ['#2196F3', '#FF9800', '#4CAF50', '#9E9E9E']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' }
+                        }
+                    }
+                });
+            }
+
+            // 导出报表
+            $('#exportBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('趋势报表导出成功', { icon: 1 });
+                }, 800);
+            });
+
+            // 刷新数据
+            $('#refreshBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('数据已更新', { icon: 1 });
+                    initCharts();
+                }, 600);
+            });
+        });
+    </script>
+</body>
+</html>
+    

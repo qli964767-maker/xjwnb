@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>后台管理-注册</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta http-equiv="Access-Control-Allow-Origin" content="*">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" href="lib/layui-v2.6.3/css/layui.css" media="all">
+    <!--[if lt IE 9]>
+    <script src="https://cdn.staticfile.org/html5shiv/r29/html5.min.js"></script>
+    <script src="https://cdn.staticfile.org/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <style>
+        html, body {width: 100%;height: 100%;overflow: hidden; margin: 0; padding: 0;}
+        body {background: #1E9FFF;}
+        /* 已移除大背景图 */
+        .layui-container {width: 100%;height: 100%;overflow: hidden;}
+        /* 注册框居中布局（适配内容高度） */
+        .admin-register-background {
+            width: 380px;
+            position:absolute;
+            left:50%;
+            top:50%;
+            transform: translate(-50%, -50%);
+            margin-top: -20px;
+        }
+        .logo-title {text-align:center;letter-spacing:2px;padding:10px 0 15px;}
+        .logo-title h1 {color:#1E9FFF;font-size:25px;font-weight:bold;margin:0;}
+        .register-form {
+            background-color:#fff;
+            border:1px solid #fff;
+            border-radius:3px;
+            padding:20px 25px;
+            box-shadow:0 0 8px #eeeeee;
+        }
+        .register-form .layui-form-item {position:relative;margin-bottom:18px;}
+        .register-form .layui-form-item label {
+            position:absolute;
+            left:1px;
+            top:1px;
+            width:38px;
+            line-height:36px;
+            text-align:center;
+            color:#d2d2d2;
+            font-size:18px;
+        }
+        .register-form .layui-form-item input {padding-left:36px; height:36px; line-height:36px;}
+        /* 短信验证码布局 */
+        .sms-code-container {display: flex; gap: 10px; align-items: center;}
+        .sms-code-btn {width: 36%; padding: 0;}
+        /* 密码强度检测样式 */
+        .password-strength {
+            margin-top: 5px;
+            height: 6px;
+            border-radius: 3px;
+            background: #eee;
+            display: none;
+        }
+        .strength-level {
+            height: 100%;
+            width: 0;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        .strength-text {
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+        /* 协议勾选区域 */
+        .agreement {font-size: 12px; color: #666; margin-top: 5px;}
+        .agreement a {color: #1E9FFF; text-decoration: none;}
+        .agreement a:hover {text-decoration: underline;}
+        /* 底部登录链接 */
+        .login-link {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 13px;
+            color: #666;
+        }
+        .login-link a {color: #1E9FFF; font-weight: 500; text-decoration: none;}
+        .login-link a:hover {text-decoration: underline;}
+    </style>
+</head>
+<body>
+<div class="layui-container">
+    <div class="admin-register-background">
+        <div class="layui-form register-form">
+            <!-- 标题区域（与登录页一致） -->
+            <div class="logo-title">
+                <h1>化妆品店库存管理系统</h1>
+                <p style="color:#666; font-size:14px; margin:8px 0 0;">账号注册</p>
+            </div>
+
+            <!-- 注册表单 -->
+            <form class="layui-form" action="" lay-filter="registerForm">
+                <!-- 用户名输入 -->
+                <div class="layui-form-item">
+                    <label class="layui-icon layui-icon-username" for="regUsername"></label>
+                    <input id="regUsername" type="text" name="username" 
+                           lay-verify="required|username" 
+                           placeholder="请输入用户名（3-16位字母/数字）" 
+                           autocomplete="off" class="layui-input">
+                </div>
+
+                <!-- 手机号输入 -->
+                <div class="layui-form-item">
+                    <label class="layui-icon layui-icon-phone" for="regPhone"></label>
+                    <input id="regPhone" type="tel" name="phone" 
+                           lay-verify="required|phone" 
+                           placeholder="请输入手机号" 
+                           autocomplete="off" class="layui-input">
+                </div>
+
+                <!-- 短信验证码 -->
+                <div class="layui-form-item">
+                    <div class="sms-code-container">
+                        <label class="layui-icon layui-icon-vercode" for="regSmsCode"></label>
+                        <input id="regSmsCode" type="text" name="smsCode" 
+                               lay-verify="required|smsCode" 
+                               placeholder="请输入短信验证码" 
+                               autocomplete="off" class="layui-input captcha">
+                        <button type="button" class="layui-btn layui-btn-normal sms-code-btn" id="getRegSmsCode">
+                            获取验证码
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 密码输入（带强度检测） -->
+                <div class="layui-form-item">
+                    <label class="layui-icon layui-icon-password" for="regPassword"></label>
+                    <input id="regPassword" type="password" name="password" 
+                           lay-verify="required|password" 
+                           placeholder="请输入密码（6-20位，含字母和数字）" 
+                           autocomplete="off" class="layui-input">
+                    <!-- 密码强度条 -->
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="strength-level" id="strengthLevel"></div>
+                    </div>
+                    <div class="strength-text" id="strengthText"></div>
+                </div>
+
+                <!-- 确认密码 -->
+                <div class="layui-form-item">
+                    <label class="layui-icon layui-icon-password" for="regRePassword"></label>
+                    <input id="regRePassword" type="password" name="rePassword" 
+                           lay-verify="required|rePassword" 
+                           placeholder="请再次输入密码" 
+                           autocomplete="off" class="layui-input">
+                </div>
+
+                <!-- 协议勾选 -->
+                <div class="layui-form-item agreement">
+                    <input type="checkbox" name="agreement" lay-skin="primary" title="我已阅读并同意" checked>
+                    <a href="javascript:;" id="showAgreement">《用户注册协议》</a>
+                </div>
+
+                <!-- 注册按钮 -->
+                <div class="layui-form-item">
+                    <button class="layui-btn layui-btn-normal layui-btn-fluid" lay-submit="" lay-filter="doRegister">
+                        完成注册
+                    </button>
+                </div>
+
+                <!-- 已有账号？去登录 -->
+                <div class="login-link">
+                    已有账号？<a href="登录界面.html">立即登录</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 外部资源（与登录页一致） -->
+<script src="lib/jquery-3.4.1/jquery-3.4.1.min.js" charset="utf-8"></script>
+<script src="lib/layui-v2.6.3/layui.js" charset="utf-8"></script>
+<script src="lib/jq-module/jquery.particleground.min.js" charset="utf-8"></script>
+
+<script>
+    layui.use(['form', 'layer', 'element'], function () {
+        var form = layui.form,
+            layer = layui.layer,
+            element = layui.element;
+
+        // 1. 初始化表单（关键：渲染复选框等组件）
+        form.render();
+
+        // 2. 粒子背景（与登录页视觉统一）
+        try {
+            $(document).ready(function(){
+                $('.layui-container').particleground({
+                    dotColor:'#7ec7fd',
+                    lineColor:'#7ec7fd',
+                    density: 10000,
+                    lineWidth: 0.5
+                });
+            });
+        } catch (e) {
+            console.log('粒子背景加载提示：', e);
+        }
+
+        // 3. 自定义表单验证规则
+        // 用户名验证（3-16位字母/数字）
+        form.verify({
+            username: function(value) {
+                if (value.length < 3 || value.length > 16) {
+                    return '用户名需3-16位';
+                }
+                if (!/^[a-zA-Z0-9]+$/.test(value)) {
+                    return '用户名仅支持字母和数字';
+                }
+            },
+            // 密码验证（6-20位，含字母和数字）
+            password: function(value) {
+                if (value.length < 6 || value.length > 20) {
+                    return '密码需6-20位';
+                }
+                if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(value)) {
+                    return '密码需包含字母和数字';
+                }
+                // 触发密码强度检测
+                checkPasswordStrength(value);
+            },
+            // 确认密码验证（与原密码一致）
+            rePassword: function(value) {
+                var password = $('#regPassword').val();
+                if (value !== password) {
+                    return '两次密码输入不一致';
+                }
+            },
+            // 短信验证码验证（6位数字）
+            smsCode: function(value) {
+                if (value.length !== 6 || !/^\d{6}$/.test(value)) {
+                    return '请输入6位数字验证码';
+                }
+            }
+        });
+
+        // 4. 密码强度检测功能
+        function checkPasswordStrength(password) {
+            var strengthBar = $('#passwordStrength');
+            var strengthLevel = $('#strengthLevel');
+            var strengthText = $('#strengthText');
+            var level = 0;
+
+            // 显示强度检测区域
+            strengthBar.show();
+            strengthText.show();
+
+            // 计算强度（基础规则：长度+字符类型）
+            if (password.length >= 6) level++;
+            if (password.length >= 12) level++;
+            if (/[A-Z]/.test(password)) level++; // 含大写字母
+            if (/[^a-zA-Z0-9]/.test(password)) level++; // 含特殊字符
+
+            // 更新强度条样式和文本
+            switch(level) {
+                case 1:
+                    strengthLevel.css('width', '25%').css('background', '#ff4444');
+                    strengthText.text('弱').css('color', '#ff4444');
+                    break;
+                case 2:
+                    strengthLevel.css('width', '50%').css('background', '#ff8800');
+                    strengthText.text('中').css('color', '#ff8800');
+                    break;
+                case 3:
+                    strengthLevel.css('width', '75%').css('background', '#ffcc00');
+                    strengthText.text('较强').css('color', '#ffcc00');
+                    break;
+                case 4:
+                    strengthLevel.css('width', '100%').css('background', '#00cc44');
+                    strengthText.text('强').css('color', '#00cc44');
+                    break;
+                default:
+                    strengthLevel.css('width', '0');
+                    strengthText.hide();
+            }
+        }
+
+        // 5. 短信验证码倒计时功能
+        $('#getRegSmsCode').click(function() {
+            var phone = $('#regPhone').val();
+            var $btn = $(this);
+
+            // 先验证手机号
+            if (!phone) {
+                layer.msg('请先输入手机号', {icon: 2, time: 1500});
+                return;
+            }
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                layer.msg('请输入正确的手机号', {icon: 2, time: 1500});
+                return;
+            }
+
+            // 倒计时逻辑（60秒）
+            var countdown = 60;
+            $btn.attr('disabled', true).text('重新发送(' + countdown + ')');
+            
+            var timer = setInterval(function() {
+                countdown--;
+                $btn.text('重新发送(' + countdown + ')');
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    $btn.attr('disabled', false).text('获取验证码');
+                }
+            }, 1000);
+
+            // 模拟发送验证码（实际项目替换为接口请求）
+            layer.msg('验证码已发送至 ' + phone, {icon: 1, time: 2000});
+        });
+
+        // 6. 查看用户协议弹窗
+        $('#showAgreement').click(function() {
+            layer.open({
+                title: '用户注册协议',
+                type: 1,
+                content: `
+                    <div style="padding:20px; line-height:1.8; font-size:13px; color:#666;">
+                        <p>1. 您需保证注册信息真实有效，不得使用他人身份信息注册</p>
+                        <p>2. 账号仅限本人使用，不得转借、出售给他人</p>
+                        <p>3. 需妥善保管账号密码，因个人原因导致账号泄露后果自负</p>
+                        <p>4. 不得利用本系统从事违法违规活动，违者将封禁账号</p>
+                        <p>5. 系统有权根据业务调整更新协议，更新后将通过公告通知</p>
+                    </div>
+                `,
+                area: ['350px', '300px'],
+                btn: ['我已阅读'],
+                btnAlign: 'c'
+            });
+        });
+
+        // 7. 注册表单提交逻辑
+        form.on('submit(doRegister)', function (data) {
+            var field = data.field;
+
+            // 验证协议是否勾选（兜底验证）
+            if (!field.agreement) {
+                layer.msg('请阅读并同意用户注册协议', {icon: 2, time: 1500});
+                return false;
+            }
+
+            // 模拟注册请求（实际项目替换为后端接口）
+            layer.msg('注册中...', {icon: 0, time: 1000}, function() {
+                layer.msg('注册成功！即将跳转登录页', {icon: 1, time: 1500}, function() {
+                    window.location.href = '登录界面.html'; // 跳回登录页
+                });
+            });
+
+            return false; // 阻止表单默认提交
+        });
+    });
+</script>
+</body>
+</html>
+    

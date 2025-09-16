@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>热销品库存监控系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-safe { background-color: #4CAF50; } /* 库存充足 */
+        .status-warning { background-color: #FF9800; } /* 预警（1-3天售罄） */
+        .status-danger { background-color: #F44336; } /* 紧急（24小时内售罄） */
+        
+        .sales-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        .stock-progress {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #eee;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .chart-container {
+            height: 220px;
+            margin-top: 10px;
+        }
+        .hot-rank {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+            border-radius: 50%;
+            background-color: #ff5722;
+            color: #fff;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+        .hot-rank.top1 { background-color: #e53935; }
+        .hot-rank.top2 { background-color: #f44336; }
+        .hot-rank.top3 { background-color: #ef5350; }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fa fa-fire" style="color: #ff5722;"></i> 热销品库存监控
+        </div>
+        <button class="layui-btn layui-btn-normal" id="refreshBtn">
+            <i class="fa fa-refresh"></i> 刷新数据
+        </button>
+    </div>
+
+    <!-- 核心数据概览 -->
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md3">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold; color: #333;">24</div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">监控热销品总数</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold; color: #F44336;">5</div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">紧急缺货预警</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold; color: #FF9800;">8</div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">库存预警商品</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card">
+                <div class="layui-card-body">
+                    <div style="text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold; color: #4CAF50;">11</div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">库存充足商品</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 热销品库存列表 -->
+    <div class="layui-card">
+        <div class="layui-card-header">
+            <div>热销品库存明细（按销量排序）</div>
+        </div>
+        <div class="layui-card-body">
+            <table class="layui-table" lay-size="sm">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">排名</th>
+                        <th>商品信息</th>
+                        <th>当前库存</th>
+                        <th>近7日销量</th>
+                        <th>日均销量</th>
+                        <th>预计售罄天数</th>
+                        <th>库存状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 热销1：紧急缺货 -->
+                    <tr>
+                        <td><span class="hot-rank top1">1</span></td>
+                        <td>
+                            <div style="font-weight: 500;">丝绒哑光口红（#正红色）</div>
+                            <div style="font-size: 12px; color: #666;">编码：G002 | 规格：3.5g</div>
+                        </td>
+                        <td>
+                            <div style="font-size: 16px; color: #F44336; font-weight: bold;">8</div>
+                            <div class="stock-progress">
+                                <div class="progress-bar" style="width: 15%; background-color: #F44336;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="sales-tag">126件</span>
+                        </td>
+                        <td>18件/天</td>
+                        <td style="color: #F44336; font-weight: bold;">0.4天（紧急）</td>
+                        <td>
+                            <span class="status-tag status-danger">24小时内售罄</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-danger" onclick="showDetail('G002')">
+                                <i class="fa fa-eye"></i> 详情/补货
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 热销2：库存预警 -->
+                    <tr>
+                        <td><span class="hot-rank top2">2</span></td>
+                        <td>
+                            <div style="font-weight: 500;">水润保湿精华液</div>
+                            <div style="font-size: 12px; color: #666;">编码：G001 | 规格：50ml</div>
+                        </td>
+                        <td>
+                            <div style="font-size: 16px; color: #FF9800; font-weight: bold;">32</div>
+                            <div class="stock-progress">
+                                <div class="progress-bar" style="width: 35%; background-color: #FF9800;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="sales-tag">98件</span>
+                        </td>
+                        <td>14件/天</td>
+                        <td style="color: #FF9800; font-weight: bold;">2.3天（预警）</td>
+                        <td>
+                            <span class="status-tag status-warning">1-3天售罄</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-warning" onclick="showDetail('G001')">
+                                <i class="fa fa-eye"></i> 详情/补货
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 热销3：库存预警 -->
+                    <tr>
+                        <td><span class="hot-rank top3">3</span></td>
+                        <td>
+                            <div style="font-weight: 500;">焕白面膜（10片装）</div>
+                            <div style="font-size: 12px; color: #666;">编码：G004 | 规格：10片/盒</div>
+                        </td>
+                        <td>
+                            <div style="font-size: 16px; color: #FF9800; font-weight: bold;">45</div>
+                            <div class="stock-progress">
+                                <div class="progress-bar" style="width: 40%; background-color: #FF9800;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="sales-tag">77件</span>
+                        </td>
+                        <td>11件/天</td>
+                        <td style="color: #FF9800; font-weight: bold;">4.1天（预警）</td>
+                        <td>
+                            <span class="status-tag status-warning">3-5天售罄</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-warning" onclick="showDetail('G004')">
+                                <i class="fa fa-eye"></i> 详情/补货
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 热销4：库存充足 -->
+                    <tr>
+                        <td><span class="hot-rank">4</span></td>
+                        <td>
+                            <div style="font-weight: 500;">温和洁面乳</div>
+                            <div style="font-size: 12px; color: #666;">编码：G005 | 规格：120g</div>
+                        </td>
+                        <td>
+                            <div style="font-size: 16px; color: #4CAF50; font-weight: bold;">89</div>
+                            <div class="stock-progress">
+                                <div class="progress-bar" style="width: 75%; background-color: #4CAF50;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="sales-tag">56件</span>
+                        </td>
+                        <td>8件/天</td>
+                        <td style="color: #4CAF50; font-weight: bold;">11.1天（充足）</td>
+                        <td>
+                            <span class="status-tag status-safe">库存充足</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="showDetail('G005')">
+                                <i class="fa fa-eye"></i> 详情
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 热销5：库存充足 -->
+                    <tr>
+                        <td><span class="hot-rank">5</span></td>
+                        <td>
+                            <div style="font-weight: 500;">修护洗发水</div>
+                            <div style="font-size: 12px; color: #666;">编码：G003 | 规格：300ml</div>
+                        </td>
+                        <td>
+                            <div style="font-size: 16px; color: #4CAF50; font-weight: bold;">120</div>
+                            <div class="stock-progress">
+                                <div class="progress-bar" style="width: 80%; background-color: #4CAF50;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="sales-tag">42件</span>
+                        </td>
+                        <td>6件/天</td>
+                        <td style="color: #4CAF50; font-weight: bold;">20天（充足）</td>
+                        <td>
+                            <span class="status-tag status-safe">库存充足</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="showDetail('G003')">
+                                <i class="fa fa-eye"></i> 详情
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 商品详情与补货弹窗 -->
+    <div class="layui-modal" id="detailModal" style="display: none; width: 700px;">
+        <div class="layui-modal-title" id="modalTitle">
+            <i class="fa fa-fire"></i> 商品详情与补货 - 丝绒哑光口红（#正红色）
+        </div>
+        <div class="layui-modal-body" style="max-height: 500px; overflow-y: auto;">
+            <div class="layui-tab" lay-allowClose="false">
+                <ul class="layui-tab-title">
+                    <li class="layui-this">库存与销量</li>
+                    <li>补货操作</li>
+                </ul>
+                <div class="layui-tab-content">
+                    <!-- 库存与销量 -->
+                    <div class="layui-tab-item layui-show">
+                        <div class="layui-row layui-col-space15">
+                            <div class="layui-col-md6">
+                                <div class="layui-card">
+                                    <div class="layui-card-header">核心数据</div>
+                                    <div class="layui-card-body">
+                                        <table class="layui-table layui-table-borderless" lay-size="sm">
+                                            <tbody>
+                                                <tr>
+                                                    <td style="width: 100px;">商品编码</td>
+                                                    <td id="goodsCode">G002</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>规格</td>
+                                                    <td id="goodsSpec">3.5g（#正红色）</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>当前库存</td>
+                                                    <td id="currentStock" style="color: #F44336; font-weight: bold;">8件</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>近7日销量</td>
+                                                    <td id="weekSales">126件</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>日均销量</td>
+                                                    <td id="dailySales">18件/天</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>预计售罄天数</td>
+                                                    <td id="outOfStockDays" style="color: #F44336; font-weight: bold;">0.4天（紧急）</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>库存状态</td>
+                                                    <td><span class="status-tag status-danger" id="stockStatus">24小时内售罄</span></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="layui-col-md6">
+                                <div class="layui-card">
+                                    <div class="layui-card-header">近7日销量趋势</div>
+                                    <div class="layui-card-body">
+                                        <div class="chart-container">
+                                            <canvas id="salesChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 补货操作 -->
+                    <div class="layui-tab-item">
+                        <form class="layui-form" lay-filter="replenishForm">
+                            <input type="hidden" name="goodsId" id="goodsId">
+                            
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">建议补货量</label>
+                                <div class="layui-input-block">
+                                    <input type="number" name="replenishQty" id="replenishQty" 
+                                        lay-verify="required|number" min="1" class="layui-input">
+                                    <div class="layui-form-mid layui-word-aux">
+                                        系统建议：<span id="suggestedQty" style="color: #1976d2;">100件（可维持5天销售）</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">补货方式</label>
+                                <div class="layui-input-block">
+                                    <radio name="replenishType" value="purchase" checked> 采购入库</radio>
+                                    <radio name="replenishType" value="transfer"> 仓库调拨</radio>
+                                </div>
+                            </div>
+                            
+                            <div class="layui-form-item" id="supplierContainer">
+                                <label class="layui-form-label">供应商</label>
+                                <div class="layui-input-block">
+                                    <select name="supplierId" lay-verify="required">
+                                        <option value="">请选择供应商</option>
+                                        <option value="1">日用百货批发中心（3天到货）</option>
+                                        <option value="2">本地美妆批发商行（1天到货）</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="layui-form-item" id="warehouseContainer" style="display: none;">
+                                <label class="layui-form-label">调拨仓库</label>
+                                <div class="layui-input-block">
+                                    <select name="warehouseId" lay-verify="required">
+                                        <option value="">请选择来源仓库</option>
+                                        <option value="1">北京仓（库存50件）</option>
+                                        <option value="2">上海仓（库存80件）</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">备注</label>
+                                <div class="layui-input-block">
+                                    <textarea name="remark" class="layui-textarea" rows="3" 
+                                        placeholder="请输入补货备注信息"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="closeDetail">关闭</button>
+            <button class="layui-btn" lay-submit lay-filter="submitReplenish">确认补货</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer'], function() {
+            var form = layui.form,
+                layer = layui.layer;
+            
+            // 热销商品数据
+            var hotProducts = {
+                "G001": {
+                    id: "G001",
+                    name: "水润保湿精华液",
+                    code: "G001",
+                    spec: "50ml",
+                    stock: 32,
+                    weekSales: 98,
+                    dailySales: 14,
+                    outOfStockDays: 2.3,
+                    status: "warning",
+                    statusText: "1-3天售罄",
+                    salesData: [12, 15, 13, 16, 14, 17, 11]
+                },
+                "G002": {
+                    id: "G002",
+                    name: "丝绒哑光口红（#正红色）",
+                    code: "G002",
+                    spec: "3.5g（#正红色）",
+                    stock: 8,
+                    weekSales: 126,
+                    dailySales: 18,
+                    outOfStockDays: 0.4,
+                    status: "danger",
+                    statusText: "24小时内售罄",
+                    salesData: [15, 18, 20, 17, 19, 21, 16]
+                },
+                "G003": {
+                    id: "G003",
+                    name: "修护洗发水",
+                    code: "G003",
+                    spec: "300ml",
+                    stock: 120,
+                    weekSales: 42,
+                    dailySales: 6,
+                    outOfStockDays: 20,
+                    status: "safe",
+                    statusText: "库存充足",
+                    salesData: [5, 7, 6, 8, 4, 5, 7]
+                },
+                "G004": {
+                    id: "G004",
+                    name: "焕白面膜（10片装）",
+                    code: "G004",
+                    spec: "10片/盒",
+                    stock: 45,
+                    weekSales: 77,
+                    dailySales: 11,
+                    outOfStockDays: 4.1,
+                    status: "warning",
+                    statusText: "3-5天售罄",
+                    salesData: [9, 12, 10, 13, 11, 8, 14]
+                },
+                "G005": {
+                    id: "G005",
+                    name: "温和洁面乳",
+                    code: "G005",
+                    spec: "120g",
+                    stock: 89,
+                    weekSales: 56,
+                    dailySales: 8,
+                    outOfStockDays: 11.1,
+                    status: "safe",
+                    statusText: "库存充足",
+                    salesData: [7, 9, 8, 6, 10, 8, 8]
+                }
+            };
+            
+            // 销量趋势图表
+            let salesChart = null;
+            
+            // 显示商品详情
+            window.showDetail = function(goodsId) {
+                const goods = hotProducts[goodsId];
+                if (!goods) return;
+                
+                // 填充基本信息
+                $('#modalTitle').html(`<i class="fa fa-fire"></i> 商品详情与补货 - ${goods.name}`);
+                $('#goodsId').val(goods.id);
+                $('#goodsCode').text(goods.code);
+                $('#goodsSpec').text(goods.spec);
+                $('#currentStock').text(`${goods.stock}件`).css('color', 
+                    goods.status === 'danger' ? '#F44336' : 
+                    goods.status === 'warning' ? '#FF9800' : '#4CAF50');
+                $('#weekSales').text(`${goods.weekSales}件`);
+                $('#dailySales').text(`${goods.dailySales}件/天`);
+                
+                // 设置预计售罄天数和状态
+                const daysText = goods.outOfStockDays < 1 ? 
+                    `${goods.outOfStockDays}天（紧急）` : 
+                    `${goods.outOfStockDays}天（预警）`;
+                $('#outOfStockDays').text(daysText).css('color', 
+                    goods.status === 'danger' ? '#F44336' : 
+                    goods.status === 'warning' ? '#FF9800' : '#4CAF50');
+                
+                $('#stockStatus').attr('class', `status-tag status-${goods.status}`).text(goods.statusText);
+                
+                // 计算建议补货量（按5天销量计算）
+                const suggestedQty = Math.ceil(goods.dailySales * 5);
+                $('#replenishQty').val(suggestedQty);
+                $('#suggestedQty').text(`${suggestedQty}件（可维持5天销售）`);
+                
+                // 初始化销量趋势图表
+                initSalesChart(goods.salesData);
+                
+                // 显示弹窗
+                $('#detailModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+            
+            // 初始化销量趋势图表
+            function initSalesChart(data) {
+                const ctx = document.getElementById('salesChart').getContext('2d');
+                
+                // 销毁已有图表
+                if (salesChart) {
+                    salesChart.destroy();
+                }
+                
+                // 创建新图表
+                salesChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['10/10', '10/11', '10/12', '10/13', '10/14', '10/15', '10/16'],
+                        datasets: [{
+                            label: '每日销量',
+                            data: data,
+                            backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                            borderColor: 'rgba(255, 152, 0, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 补货方式切换
+            form.on('radio(replenishType)', function(data) {
+                if (data.value === 'purchase') {
+                    $('#supplierContainer').show();
+                    $('#warehouseContainer').hide();
+                } else {
+                    $('#supplierContainer').hide();
+                    $('#warehouseContainer').show();
+                }
+            });
+            
+            // 关闭详情弹窗
+            $('#closeDetail').click(function() {
+                $('#detailModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+            
+            // 提交补货
+            form.on('submit(submitReplenish)', function(data) {
+                const goodsId = $('#goodsId').val();
+                const goods = hotProducts[goodsId];
+                
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#detailModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg(`${goods.name} 补货申请已提交`, {icon: 1});
+                }, 1000);
+                
+                return false;
+            });
+            
+            // 刷新数据
+            $('#refreshBtn').click(function() {
+                const loadIndex = layer.load(1);
+                setTimeout(function() {
+                    layer.close(loadIndex);
+                    layer.msg('热销品库存数据已刷新', {icon: 1});
+                }, 800);
+            });
+        });
+    </script>
+</body>
+</html>
+    

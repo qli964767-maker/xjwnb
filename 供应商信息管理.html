@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>供应商信息管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+        }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-item {
+            flex: 1;
+            min-width: 200px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-active { background-color: #4CAF50; }
+        .status-inactive { background-color: #F44336; }
+        .status-pending { background-color: #FF9800; }
+        
+        .rating-stars {
+            color: #FFB800;
+        }
+        .tab-content {
+            padding: 15px;
+        }
+        .info-group {
+            margin-bottom: 15px;
+        }
+        .info-label {
+            display: inline-block;
+            width: 120px;
+            color: #666;
+            vertical-align: top;
+        }
+        .info-value {
+            display: inline-block;
+            width: calc(100% - 130px);
+        }
+        .category-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background-color: #e8f4fd;
+            color: #1e9fff;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .form-col {
+            flex: 1;
+            min-width: 250px;
+        }
+        .required {
+            color: #FF5722;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-title">
+        <i class="fa fa-building-o"></i> 供应商信息管理
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <div class="search-bar">
+                <div class="search-item">
+                    <div class="layui-input-group">
+                        <input type="text" placeholder="搜索供应商名称/编号" class="layui-input" id="supplierSearch">
+                        <div class="layui-input-group-addon">
+                            <button class="layui-btn" id="searchBtn">
+                                <i class="fa fa-search"></i> 搜索
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="search-item">
+                    <select name="supplierType" id="supplierType">
+                        <option value="">全部类型</option>
+                        <option value="1">美妆供应链</option>
+                        <option value="2">日用百货</option>
+                        <option value="3">国际品牌代理</option>
+                        <option value="4">本地供应商</option>
+                    </select>
+                </div>
+                <div class="search-item">
+                    <select name="supplierStatus" id="supplierStatus">
+                        <option value="">全部状态</option>
+                        <option value="active">合作中</option>
+                        <option value="inactive">已停用</option>
+                        <option value="pending">待审核</option>
+                    </select>
+                </div>
+                <div class="search-item">
+                    <button class="layui-btn" id="addSupplierBtn">
+                        <i class="fa fa-plus"></i> 新增供应商
+                    </button>
+                </div>
+            </div>
+
+            <table class="layui-table" lay-size="sm">
+                <thead>
+                    <tr>
+                        <th>供应商编号</th>
+                        <th>供应商名称</th>
+                        <th>类型</th>
+                        <th>联系人</th>
+                        <th>联系电话</th>
+                        <th>评分</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="supplierTable">
+                    <tr>
+                        <td>SP2023001</td>
+                        <td>美妆供应链有限公司</td>
+                        <td>美妆供应链</td>
+                        <td>张经理</td>
+                        <td>13800138000</td>
+                        <td>
+                            <div class="rating-stars">
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star-half-o"></i>
+                                <span style="color:#666;">4.5</span>
+                            </div>
+                        </td>
+                        <td><span class="status-tag status-active">合作中</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSupplier('SP2023001')">
+                                    <i class="fa fa-eye"></i> 查看
+                                </button>
+                                <button class="layui-btn layui-btn-normal layui-btn-xs" onclick="editSupplier('SP2023001')">
+                                    <i class="fa fa-edit"></i> 编辑
+                                </button>
+                                <button class="layui-btn layui-btn-danger layui-btn-xs" onclick="deleteSupplier('SP2023001')">
+                                    <i class="fa fa-trash"></i> 删除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>SP2023002</td>
+                        <td>国际化妆品贸易公司</td>
+                        <td>国际品牌代理</td>
+                        <td>李小姐</td>
+                        <td>13900139000</td>
+                        <td>
+                            <div class="rating-stars">
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star-o"></i>
+                                <span style="color:#666;">4.0</span>
+                            </div>
+                        </td>
+                        <td><span class="status-tag status-active">合作中</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSupplier('SP2023002')">
+                                    <i class="fa fa-eye"></i> 查看
+                                </button>
+                                <button class="layui-btn layui-btn-normal layui-btn-xs" onclick="editSupplier('SP2023002')">
+                                    <i class="fa fa-edit"></i> 编辑
+                                </button>
+                                <button class="layui-btn layui-btn-danger layui-btn-xs" onclick="deleteSupplier('SP2023002')">
+                                    <i class="fa fa-trash"></i> 删除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>SP2023003</td>
+                        <td>日用百货批发中心</td>
+                        <td>日用百货</td>
+                        <td>王经理</td>
+                        <td>13700137000</td>
+                        <td>
+                            <div class="rating-stars">
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star-half-o"></i>
+                                <i class="fa fa-star-o"></i>
+                                <span style="color:#666;">3.5</span>
+                            </div>
+                        </td>
+                        <td><span class="status-tag status-active">合作中</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSupplier('SP2023003')">
+                                    <i class="fa fa-eye"></i> 查看
+                                </button>
+                                <button class="layui-btn layui-btn-normal layui-btn-xs" onclick="editSupplier('SP2023003')">
+                                    <i class="fa fa-edit"></i> 编辑
+                                </button>
+                                <button class="layui-btn layui-btn-danger layui-btn-xs" onclick="deleteSupplier('SP2023003')">
+                                    <i class="fa fa-trash"></i> 删除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>SP2023004</td>
+                        <td>本地美妆批发商行</td>
+                        <td>本地供应商</td>
+                        <td>陈老板</td>
+                        <td>13600136000</td>
+                        <td>
+                            <div class="rating-stars">
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star"></i>
+                                <i class="fa fa-star-o"></i>
+                                <i class="fa fa-star-o"></i>
+                                <span style="color:#666;">3.0</span>
+                            </div>
+                        </td>
+                        <td><span class="status-tag status-inactive">已停用</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSupplier('SP2023004')">
+                                    <i class="fa fa-eye"></i> 查看
+                                </button>
+                                <button class="layui-btn layui-btn-normal layui-btn-xs" onclick="editSupplier('SP2023004')">
+                                    <i class="fa fa-edit"></i> 编辑
+                                </button>
+                                <button class="layui-btn layui-btn-danger layui-btn-xs" onclick="deleteSupplier('SP2023004')">
+                                    <i class="fa fa-trash"></i> 删除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>SP2023005</td>
+                        <td>环球美妆供应链</td>
+                        <td>国际品牌代理</td>
+                        <td>林经理</td>
+                        <td>13500135000</td>
+                        <td>
+                            <div class="rating-stars">
+                                <i class="fa fa-star-o"></i>
+                                <i class="fa fa-star-o"></i>
+                                <i class="fa fa-star-o"></i>
+                                <i class="fa fa-star-o"></i>
+                                <i class="fa fa-star-o"></i>
+                                <span style="color:#666;">0.0</span>
+                            </div>
+                        </td>
+                        <td><span class="status-tag status-pending">待审核</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="layui-btn layui-btn-xs" onclick="viewSupplier('SP2023005')">
+                                    <i class="fa fa-eye"></i> 查看
+                                </button>
+                                <button class="layui-btn layui-btn-normal layui-btn-xs" onclick="editSupplier('SP2023005')">
+                                    <i class="fa fa-edit"></i> 编辑
+                                </button>
+                                <button class="layui-btn layui-btn-danger layui-btn-xs" onclick="deleteSupplier('SP2023005')">
+                                    <i class="fa fa-trash"></i> 删除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="text-align: right;">
+                <div id="pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 供应商详情弹窗 -->
+    <div class="layui-modal" id="detailModal" style="display: none; width: 800px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-building-o"></i> 供应商详情 - <span id="detailSupplierNo"></span>
+        </div>
+        <div class="layui-modal-body" style="max-height: 600px; overflow-y: auto;">
+            <div class="layui-tab" lay-allowClose="false">
+                <ul class="layui-tab-title">
+                    <li class="layui-this">基本信息</li>
+                    <li>产品信息</li>
+                    <li>合作记录</li>
+                    <li>评估信息</li>
+                </ul>
+                <div class="layui-tab-content">
+                    <!-- 基本信息 -->
+                    <div class="layui-tab-item layui-show">
+                        <div class="info-group">
+                            <span class="info-label">供应商名称：</span>
+                            <span class="info-value" id="detailName"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">供应商编号：</span>
+                            <span class="info-value" id="detailCode"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">供应商类型：</span>
+                            <span class="info-value" id="detailType"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">联系人：</span>
+                            <span class="info-value" id="detailContact"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">联系电话：</span>
+                            <span class="info-value" id="detailPhone"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">电子邮箱：</span>
+                            <span class="info-value" id="detailEmail"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">地址：</span>
+                            <span class="info-value" id="detailAddress"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">开户银行：</span>
+                            <span class="info-value" id="detailBank"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">银行账号：</span>
+                            <span class="info-value" id="detailBankAccount"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">纳税人识别号：</span>
+                            <span class="info-value" id="detailTaxId"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">合作状态：</span>
+                            <span class="info-value" id="detailStatus"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">合作开始日期：</span>
+                            <span class="info-value" id="detailStartDate"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">主要供应产品类别：</span>
+                            <span class="info-value" id="detailCategories"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">备注：</span>
+                            <span class="info-value" id="detailRemark"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- 产品信息 -->
+                    <div class="layui-tab-item">
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th>产品编号</th>
+                                    <th>产品名称</th>
+                                    <th>规格</th>
+                                    <th>供应价格(元)</th>
+                                    <th>最小起订量</th>
+                                    <th>供货周期</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productList">
+                                <!-- 产品列表将通过JS动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 合作记录 -->
+                    <div class="layui-tab-item">
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th>订单编号</th>
+                                    <th>订单日期</th>
+                                    <th>订单金额(元)</th>
+                                    <th>订单状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderHistory">
+                                <!-- 合作记录将通过JS动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 评估信息 -->
+                    <div class="layui-tab-item">
+                        <div class="info-group">
+                            <span class="info-label">综合评分：</span>
+                            <span class="info-value" id="detailRating"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">价格竞争力：</span>
+                            <span class="info-value" id="detailPriceScore"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">质量满意度：</span>
+                            <span class="info-value" id="detailQualityScore"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">交货及时性：</span>
+                            <span class="info-value" id="detailDeliveryScore"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">服务态度：</span>
+                            <span class="info-value" id="detailServiceScore"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">最近评估日期：</span>
+                            <span class="info-value" id="detailLastEvaluation"></span>
+                        </div>
+                        <div class="info-group">
+                            <span class="info-label">评估备注：</span>
+                            <span class="info-value" id="detailEvaluationRemark"></span>
+                        </div>
+                        
+                        <button class="layui-btn" style="margin-top: 15px;" id="addEvaluationBtn">
+                            <i class="fa fa-plus"></i> 添加新评估
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="closeDetail">关闭</button>
+            <button class="layui-btn" id="editFromDetailBtn">编辑信息</button>
+        </div>
+    </div>
+
+    <!-- 新增/编辑供应商弹窗 -->
+    <div class="layui-modal" id="editModal" style="display: none; width: 800px;">
+        <div class="layui-modal-title" id="editModalTitle">
+            <i class="fa fa-building-o"></i> 新增供应商
+        </div>
+        <div class="layui-modal-body" style="max-height: 600px; overflow-y: auto;">
+            <form class="layui-form" lay-filter="supplierForm">
+                <input type="hidden" name="supplierId" id="supplierId">
+                
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required">*</span>供应商编号
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="supplierCode" id="supplierCode" lay-verify="required" 
+                                    class="layui-input" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required">*</span>供应商名称
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="supplierName" id="supplierName" lay-verify="required" 
+                                    class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required">*</span>供应商类型
+                            </label>
+                            <div class="layui-input-block">
+                                <select name="supplierType" id="editSupplierType" lay-verify="required">
+                                    <option value="">请选择</option>
+                                    <option value="1">美妆供应链</option>
+                                    <option value="2">日用百货</option>
+                                    <option value="3">国际品牌代理</option>
+                                    <option value="4">本地供应商</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required">*</span>合作状态
+                            </label>
+                            <div class="layui-input-block">
+                                <select name="supplierStatus" id="editSupplierStatus" lay-verify="required">
+                                    <option value="active">合作中</option>
+                                    <option value="inactive">已停用</option>
+                                    <option value="pending">待审核</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required">*</span>联系人
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="contactPerson" id="contactPerson" lay-verify="required" 
+                                    class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required">*</span>联系电话
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="contactPhone" id="contactPhone" lay-verify="required|phone" 
+                                    class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">电子邮箱</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="contactEmail" id="contactEmail" lay-verify="email" 
+                                    class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">合作开始日期</label>
+                            <div class="layui-input-block">
+                                <input type="date" name="cooperationStart" id="cooperationStart" 
+                                    class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">地址</label>
+                    <div class="layui-input-block">
+                        <textarea name="address" id="address" class="layui-textarea" rows="2"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">开户银行</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="bankName" id="bankName" class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-col">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">银行账号</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="bankAccount" id="bankAccount" class="layui-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">纳税人识别号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="taxId" id="taxId" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">主要供应类别</label>
+                    <div class="layui-input-block">
+                        <input type="checkbox" name="categories" value="1" title="面部护理">
+                        <input type="checkbox" name="categories" value="2" title="唇部护理">
+                        <input type="checkbox" name="categories" value="3" title="头发护理">
+                        <input type="checkbox" name="categories" value="4" title="香水香氛">
+                        <input type="checkbox" name="categories" value="5" title="面膜类">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <textarea name="remark" id="remark" class="layui-textarea" rows="3"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelEdit">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="saveSupplier">保存</button>
+        </div>
+    </div>
+
+    <!-- 评估弹窗 -->
+    <div class="layui-modal" id="evaluationModal" style="display: none; width: 600px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-star-o"></i> 供应商评估
+        </div>
+        <div class="layui-modal-body">
+            <form class="layui-form" lay-filter="evaluationForm">
+                <input type="hidden" name="evaluationSupplierId" id="evaluationSupplierId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">
+                        <span class="required">*</span>价格竞争力
+                    </label>
+                    <div class="layui-input-block">
+                        <select name="priceScore" lay-verify="required">
+                            <option value="1">1星 (较差)</option>
+                            <option value="2">2星 (一般)</option>
+                            <option value="3">3星 (良好)</option>
+                            <option value="4">4星 (优秀)</option>
+                            <option value="5" selected>5星 (极佳)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">
+                        <span class="required">*</span>质量满意度
+                    </label>
+                    <div class="layui-input-block">
+                        <select name="qualityScore" lay-verify="required">
+                            <option value="1">1星 (较差)</option>
+                            <option value="2">2星 (一般)</option>
+                            <option value="3">3星 (良好)</option>
+                            <option value="4">4星 (优秀)</option>
+                            <option value="5" selected>5星 (极佳)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">
+                        <span class="required">*</span>交货及时性
+                    </label>
+                    <div class="layui-input-block">
+                        <select name="deliveryScore" lay-verify="required">
+                            <option value="1">1星 (较差)</option>
+                            <option value="2">2星 (一般)</option>
+                            <option value="3">3星 (良好)</option>
+                            <option value="4">4星 (优秀)</option>
+                            <option value="5" selected>5星 (极佳)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">
+                        <span class="required">*</span>服务态度
+                    </label>
+                    <div class="layui-input-block">
+                        <select name="serviceScore" lay-verify="required">
+                            <option value="1">1星 (较差)</option>
+                            <option value="2">2星 (一般)</option>
+                            <option value="3">3星 (良好)</option>
+                            <option value="4">4星 (优秀)</option>
+                            <option value="5" selected>5星 (极佳)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">评估日期</label>
+                    <div class="layui-input-block">
+                        <input type="date" name="evaluationDate" id="evaluationDate" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">评估备注</label>
+                    <div class="layui-input-block">
+                        <textarea name="evaluationRemark" class="layui-textarea" rows="3" 
+                            placeholder="请输入评估意见和建议"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelEvaluation">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="saveEvaluation">保存评估</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage', 'element'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage,
+                element = layui.element;
+
+            // 供应商数据
+            var supplierData = {
+                "SP2023001": {
+                    id: 1,
+                    code: "SP2023001",
+                    name: "美妆供应链有限公司",
+                    type: "美妆供应链",
+                    typeId: 1,
+                    contact: "张经理",
+                    phone: "13800138000",
+                    email: "zhang@meizhuang.com",
+                    address: "上海市浦东新区XX路XX号",
+                    bank: "工商银行上海浦东支行",
+                    bankAccount: "6222021001234567890",
+                    taxId: "91310000XXXXXXXXXX",
+                    status: "active",
+                    statusText: "合作中",
+                    startDate: "2022-01-15",
+                    categories: [1, 3, 5],
+                    categoriesText: ["面部护理", "头发护理", "面膜类"],
+                    remark: "主要供应面部护理和头发护理产品，价格有竞争力",
+                    rating: 4.5,
+                    priceScore: 4.5,
+                    qualityScore: 4.7,
+                    deliveryScore: 4.3,
+                    serviceScore: 4.5,
+                    lastEvaluation: "2023-09-10",
+                    evaluationRemark: "整体表现优秀，交货及时，质量稳定",
+                    products: [
+                        {code: "CP001", name: "水润保湿精华液", spec: "50ml", price: 105.00, moq: 10, leadTime: "3-5天"},
+                        {code: "CP003", name: "修护洗发水", spec: "300ml", price: 56.00, moq: 20, leadTime: "3-5天"},
+                        {code: "CP006", name: "温和洁面乳", spec: "120g", price: 48.00, moq: 20, leadTime: "3-5天"}
+                    ],
+                    orders: [
+                        {orderNo: "PO20231016001", date: "2023-10-16", amount: 6895.00, status: "已确认"},
+                        {orderNo: "PO20230925002", date: "2023-09-25", amount: 4520.00, status: "已收货"},
+                        {orderNo: "PO20230905001", date: "2023-09-05", amount: 8250.00, status: "已收货"}
+                    ]
+                },
+                "SP2023002": {
+                    id: 2,
+                    code: "SP2023002",
+                    name: "国际化妆品贸易公司",
+                    type: "国际品牌代理",
+                    typeId: 3,
+                    contact: "李小姐",
+                    phone: "13900139000",
+                    email: "li@international-cosmetics.com",
+                    address: "广州市天河区XX路XX号",
+                    bank: "中国银行广州天河支行",
+                    bankAccount: "6216601200001234567",
+                    taxId: "91440100XXXXXXXXXX",
+                    status: "active",
+                    statusText: "合作中",
+                    startDate: "2022-03-20",
+                    categories: [1, 4, 5],
+                    categoriesText: ["面部护理", "香水香氛", "面膜类"],
+                    remark: "主要代理国际品牌化妆品，产品质量好",
+                    rating: 4.0,
+                    priceScore: 3.5,
+                    qualityScore: 4.8,
+                    deliveryScore: 4.2,
+                    serviceScore: 3.8,
+                    lastEvaluation: "2023-08-25",
+                    evaluationRemark: "产品质量优秀，但价格偏高，交货周期略长",
+                    products: [
+                        {code: "CP001", name: "水润保湿精华液", spec: "50ml", price: 102.00, moq: 15, leadTime: "5-7天"},
+                        {code: "CP004", name: "男士古龙香水", spec: "100ml", price: 165.00, moq: 10, leadTime: "7-10天"},
+                        {code: "CP005", name: "焕白面膜", spec: "10片装", price: 128.00, moq: 20, leadTime: "5-7天"}
+                    ],
+                    orders: [
+                        {orderNo: "PO20231015001", date: "2023-10-15", amount: 10830.00, status: "部分收货"},
+                        {orderNo: "PO20231010001", date: "2023-10-10", amount: 9840.00, status: "已收货"},
+                        {orderNo: "PO20230918003", date: "2023-09-18", amount: 5620.00, status: "已收货"}
+                    ]
+                },
+                "SP2023003": {
+                    id: 3,
+                    code: "SP2023003",
+                    name: "日用百货批发中心",
+                    type: "日用百货",
+                    typeId: 2,
+                    contact: "王经理",
+                    phone: "13700137000",
+                    email: "wang@riyongbaihuo.com",
+                    address: "北京市朝阳区XX路XX号",
+                    bank: "建设银行北京朝阳支行",
+                    bankAccount: "6227000012345678901",
+                    taxId: "91110105XXXXXXXXXX",
+                    status: "active",
+                    statusText: "合作中",
+                    startDate: "2022-05-10",
+                    categories: [2, 3, 6],
+                    categoriesText: ["唇部护理", "头发护理", "其他"],
+                    remark: "综合类供应商，产品种类丰富",
+                    rating: 3.5,
+                    priceScore: 4.0,
+                    qualityScore: 3.2,
+                    deliveryScore: 3.7,
+                    serviceScore: 3.5,
+                    lastEvaluation: "2023-09-05",
+                    evaluationRemark: "价格有优势，但产品质量参差不齐，需要加强验货",
+                    products: [
+                        {code: "CP002", name: "丝绒哑光口红", spec: "3.5g", price: 73.00, moq: 20, leadTime: "3-5天"},
+                        {code: "CP003", name: "修护洗发水", spec: "300ml", price: 55.00, moq: 30, leadTime: "3-5天"},
+                        {code: "CP008", name: "防晒霜", spec: "60ml", price: 82.00, moq: 15, leadTime: "3-5天"}
+                    ],
+                    orders: [
+                        {orderNo: "PO20231005001", date: "2023-10-05", amount: 3850.00, status: "已取消"},
+                        {orderNo: "PO20230922001", date: "2023-09-22", amount: 4260.00, status: "已收货"},
+                        {orderNo: "PO20230830002", date: "2023-08-30", amount: 2980.00, status: "已收货"}
+                    ]
+                },
+                "SP2023004": {
+                    id: 4,
+                    code: "SP2023004",
+                    name: "本地美妆批发商行",
+                    type: "本地供应商",
+                    typeId: 4,
+                    contact: "陈老板",
+                    phone: "13600136000",
+                    email: "chen@local-beauty.com",
+                    address: "杭州市西湖区XX路XX号",
+                    bank: "农业银行杭州西湖支行",
+                    bankAccount: "6228480010001234567",
+                    taxId: "91330106XXXXXXXXXX",
+                    status: "inactive",
+                    statusText: "已停用",
+                    startDate: "2022-02-05",
+                    endDate: "2023-06-10",
+                    categories: [1, 2, 5],
+                    categoriesText: ["面部护理", "唇部护理", "面膜类"],
+                    remark: "因质量问题，已于2023年6月停止合作",
+                    rating: 3.0,
+                    priceScore: 3.5,
+                    qualityScore: 2.5,
+                    deliveryScore: 3.2,
+                    serviceScore: 3.0,
+                    lastEvaluation: "2023-06-05",
+                    evaluationRemark: "多次出现质量问题，决定终止合作",
+                    products: [
+                        {code: "CP002", name: "丝绒哑光口红", spec: "3.5g", price: 70.00, moq: 10, leadTime: "1-2天"},
+                        {code: "CP005", name: "焕白面膜", spec: "10片装", price: 125.00, moq: 10, leadTime: "1-2天"}
+                    ],
+                    orders: [
+                        {orderNo: "PO20230520001", date: "2023-05-20", amount: 2850.00, status: "已收货"},
+                        {orderNo: "PO20230415002", date: "2023-04-15", amount: 3200.00, status: "已收货"},
+                        {orderNo: "PO20230310001", date: "2023-03-10", amount: 1980.00, status: "已收货"}
+                    ]
+                },
+                "SP2023005": {
+                    id: 5,
+                    code: "SP2023005",
+                    name: "环球美妆供应链",
+                    type: "国际品牌代理",
+                    typeId: 3,
+                    contact: "林经理",
+                    phone: "13500135000",
+                    email: "lin@global-beauty.com",
+                    address: "深圳市福田区XX路XX号",
+                    bank: "招商银行深圳福田支行",
+                    bankAccount: "6225887812345678",
+                    taxId: "91440300XXXXXXXXXX",
+                    status: "pending",
+                    statusText: "待审核",
+                    startDate: "",
+                    categories: [1, 4],
+                    categoriesText: ["面部护理", "香水香氛"],
+                    remark: "新申请的国际美妆供应商，正在审核中",
+                    rating: 0.0,
+                    priceScore: 0,
+                    qualityScore: 0,
+                    deliveryScore: 0,
+                    serviceScore: 0,
+                    lastEvaluation: "",
+                    evaluationRemark: "",
+                    products: [
+                        {code: "CP009", name: "奢华修护精华", spec: "30ml", price: 280.00, moq: 5, leadTime: "10-15天"},
+                        {code: "CP010", name: "高端女士香水", spec: "50ml", price: 320.00, moq: 5, leadTime: "10-15天"}
+                    ],
+                    orders: []
+                }
+            };
+
+            // 查看供应商详情
+            window.viewSupplier = function(supplierCode) {
+                var supplier = supplierData[supplierCode];
+                if (!supplier) return;
+
+                // 填充基本信息
+                $('#detailSupplierNo').text(supplier.code);
+                $('#detailName').text(supplier.name);
+                $('#detailCode').text(supplier.code);
+                $('#detailType').text(supplier.type);
+                $('#detailContact').text(supplier.contact);
+                $('#detailPhone').text(supplier.phone);
+                $('#detailEmail').text(supplier.email || '-');
+                $('#detailAddress').text(supplier.address || '-');
+                $('#detailBank').text(supplier.bank || '-');
+                $('#detailBankAccount').text(supplier.bankAccount || '-');
+                $('#detailTaxId').text(supplier.taxId || '-');
+                $('#detailStatus').html(`<span class="status-tag status-${supplier.status}">${supplier.statusText}</span>`);
+                $('#detailStartDate').text(supplier.startDate || '-');
+                $('#detailRemark').text(supplier.remark || '-');
+                
+                // 填充产品类别
+                var categoriesHtml = '';
+                supplier.categoriesText.forEach(category => {
+                    categoriesHtml += `<span class="category-tag">${category}</span>`;
+                });
+                $('#detailCategories').html(categoriesHtml);
+
+                // 填充产品列表
+                var productHtml = '';
+                if (supplier.products.length === 0) {
+                    productHtml = '<tr><td colspan="6" style="text-align: center;">暂无供应产品</td></tr>';
+                } else {
+                    supplier.products.forEach(product => {
+                        productHtml += `
+                            <tr>
+                                <td>${product.code}</td>
+                                <td>${product.name}</td>
+                                <td>${product.spec}</td>
+                                <td>¥${product.price.toFixed(2)}</td>
+                                <td>${product.moq}</td>
+                                <td>${product.leadTime}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                $('#productList').html(productHtml);
+
+                // 填充合作记录
+                var orderHtml = '';
+                if (supplier.orders.length === 0) {
+                    orderHtml = '<tr><td colspan="5" style="text-align: center;">暂无合作订单</td></tr>';
+                } else {
+                    supplier.orders.forEach(order => {
+                        orderHtml += `
+                            <tr>
+                                <td>${order.orderNo}</td>
+                                <td>${order.date}</td>
+                                <td>¥${order.amount.toFixed(2)}</td>
+                                <td>${order.status}</td>
+                                <td>
+                                    <button class="layui-btn layui-btn-xs" onclick="viewOrder('${order.orderNo}')">
+                                        <i class="fa fa-eye"></i> 查看
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+                $('#orderHistory').html(orderHtml);
+
+                // 填充评估信息
+                $('#detailRating').html(`
+                    <div class="rating-stars">
+                        ${generateStars(supplier.rating)}
+                        <span style="color:#666;">${supplier.rating.toFixed(1)}</span>
+                    </div>
+                `);
+                
+                $('#detailPriceScore').html(`
+                    <div class="rating-stars">
+                        ${generateStars(supplier.priceScore)}
+                        <span style="color:#666;">${supplier.priceScore.toFixed(1)}</span>
+                    </div>
+                `);
+                
+                $('#detailQualityScore').html(`
+                    <div class="rating-stars">
+                        ${generateStars(supplier.qualityScore)}
+                        <span style="color:#666;">${supplier.qualityScore.toFixed(1)}</span>
+                    </div>
+                `);
+                
+                $('#detailDeliveryScore').html(`
+                    <div class="rating-stars">
+                        ${generateStars(supplier.deliveryScore)}
+                        <span style="color:#666;">${supplier.deliveryScore.toFixed(1)}</span>
+                    </div>
+                `);
+                
+                $('#detailServiceScore').html(`
+                    <div class="rating-stars">
+                        ${generateStars(supplier.serviceScore)}
+                        <span style="color:#666;">${supplier.serviceScore.toFixed(1)}</span>
+                    </div>
+                `);
+                
+                $('#detailLastEvaluation').text(supplier.lastEvaluation || '-');
+                $('#detailEvaluationRemark').text(supplier.evaluationRemark || '-');
+
+                // 记录当前供应商ID，用于评估
+                $('#evaluationSupplierId').val(supplier.id);
+
+                // 显示弹窗
+                $('#detailModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 生成星级评分HTML
+            function generateStars(score) {
+                if (score <= 0) {
+                    return '<i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i>';
+                }
+                
+                var html = '';
+                var fullStars = Math.floor(score);
+                var hasHalfStar = score % 1 >= 0.5;
+                
+                for (var i = 1; i <= 5; i++) {
+                    if (i <= fullStars) {
+                        html += '<i class="fa fa-star"></i>';
+                    } else if (i === fullStars + 1 && hasHalfStar) {
+                        html += '<i class="fa fa-star-half-o"></i>';
+                    } else {
+                        html += '<i class="fa fa-star-o"></i>';
+                    }
+                }
+                
+                return html;
+            }
+
+            // 查看订单
+            window.viewOrder = function(orderNo) {
+                layer.msg(`查看订单 ${orderNo} 的详情`, {icon: 1});
+            };
+
+            // 编辑供应商
+            window.editSupplier = function(supplierCode) {
+                var supplier = supplierData[supplierCode];
+                if (!supplier) return;
+
+                // 填充表单数据
+                $('#editModalTitle').html('<i class="fa fa-building-o"></i> 编辑供应商');
+                $('#supplierId').val(supplier.id);
+                $('#supplierCode').val(supplier.code);
+                $('#supplierName').val(supplier.name);
+                $('#editSupplierType').val(supplier.typeId);
+                $('#editSupplierStatus').val(supplier.status);
+                $('#contactPerson').val(supplier.contact);
+                $('#contactPhone').val(supplier.phone);
+                $('#contactEmail').val(supplier.email || '');
+                $('#cooperationStart').val(supplier.startDate || '');
+                $('#address').val(supplier.address || '');
+                $('#bankName').val(supplier.bank || '');
+                $('#bankAccount').val(supplier.bankAccount || '');
+                $('#taxId').val(supplier.taxId || '');
+                $('#remark').val(supplier.remark || '');
+
+                // 处理产品类别复选框
+                $('input[name="categories"]').prop('checked', false);
+                supplier.categories.forEach(catId => {
+                    $(`input[name="categories"][value="${catId}"]`).prop('checked', true);
+                });
+
+                // 刷新表单
+                form.render();
+
+                // 显示弹窗
+                $('#editModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 删除供应商
+            window.deleteSupplier = function(supplierCode) {
+                layer.confirm(`确定要删除供应商 ${supplierCode} 吗？删除后数据将无法恢复。`, {
+                    icon: 3,
+                    title: '确认删除'
+                }, function(index) {
+                    layer.close(index);
+                    // 模拟删除操作
+                    layer.load(2);
+                    setTimeout(function() {
+                        layer.closeAll('loading');
+                        layer.msg('供应商已成功删除', {icon: 1});
+                    }, 800);
+                });
+            };
+
+            // 新增供应商
+            $('#addSupplierBtn').click(function() {
+                // 生成供应商编号
+                var date = new Date();
+                var year = date.getFullYear().toString().substr(-2);
+                var month = (date.getMonth() + 1).toString().padStart(2, '0');
+                var random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                var supplierCode = `SP${year}${month}${random}`;
+
+                // 重置表单
+                $('#editModalTitle').html('<i class="fa fa-building-o"></i> 新增供应商');
+                $('#supplierId').val('');
+                $('#supplierCode').val(supplierCode);
+                $('#supplierName').val('');
+                $('#editSupplierType').val('');
+                $('#editSupplierStatus').val('pending');
+                $('#contactPerson').val('');
+                $('#contactPhone').val('');
+                $('#contactEmail').val('');
+                $('#cooperationStart').val('');
+                $('#address').val('');
+                $('#bankName').val('');
+                $('#bankAccount').val('');
+                $('#taxId').val('');
+                $('#remark').val('');
+                $('input[name="categories"]').prop('checked', false);
+
+                // 刷新表单
+                form.render();
+
+                // 显示弹窗
+                $('#editModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            });
+
+            // 从详情页编辑
+            $('#editFromDetailBtn').click(function() {
+                var supplierCode = $('#detailSupplierNo').text();
+                $('#detailModal').hide();
+                $('.layui-modal-shade').remove();
+                setTimeout(function() {
+                    editSupplier(supplierCode);
+                }, 300);
+            });
+
+            // 关闭详情弹窗
+            $('#closeDetail').click(function() {
+                $('#detailModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 取消编辑
+            $('#cancelEdit').click(function() {
+                $('#editModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 保存供应商信息
+            form.on('submit(saveSupplier)', function(data) {
+                // 模拟保存操作
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#editModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg('供应商信息已成功保存', {icon: 1});
+                }, 800);
+                return false;
+            });
+
+            // 添加新评估
+            $('#addEvaluationBtn').click(function() {
+                // 设置当前日期为默认评估日期
+                var today = new Date().toISOString().split('T')[0];
+                $('#evaluationDate').val(today);
+                
+                // 显示评估弹窗
+                $('#detailModal').hide();
+                setTimeout(function() {
+                    $('#evaluationModal').show();
+                    $('body').append('<div class="layui-modal-shade"></div>');
+                }, 300);
+            });
+
+            // 取消评估
+            $('#cancelEvaluation').click(function() {
+                $('#evaluationModal').hide();
+                $('.layui-modal-shade').remove();
+                // 显示详情页
+                setTimeout(function() {
+                    $('#detailModal').show();
+                    $('body').append('<div class="layui-modal-shade"></div>');
+                }, 300);
+            });
+
+            // 保存评估
+            form.on('submit(saveEvaluation)', function(data) {
+                // 模拟保存操作
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#evaluationModal').hide();
+                    $('.layui-modal-shade').remove();
+                    // 显示详情页并刷新数据
+                    setTimeout(function() {
+                        var supplierCode = $('#detailSupplierNo').text();
+                        viewSupplier(supplierCode);
+                        layer.msg('评估信息已成功保存', {icon: 1});
+                    }, 300);
+                }, 800);
+                return false;
+            });
+
+            // 搜索供应商
+            $('#searchBtn').click(function() {
+                var keyword = $('#supplierSearch').val().toLowerCase();
+                // 实际应用中这里会根据关键词筛选供应商
+                layer.msg('搜索供应商：' + keyword, {icon: 1});
+            });
+
+            // 初始化分页
+            laypage.render({
+                elem: 'pagination',
+                count: 30, // 数据总数
+                limit: 10,
+                limits: [5, 10, 20],
+                layout: ['prev', 'page', 'next', 'count', 'limit'],
+                jump: function(obj) {
+                    // 分页切换时触发
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+    

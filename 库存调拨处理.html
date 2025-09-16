@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>库存调拨管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .page-title i {
+            color: #7B68EE;
+            margin-right: 8px;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .layui-card-header {
+            font-weight: 500;
+            padding: 12px 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .layui-form-label {
+            width: 120px;
+        }
+        .layui-input-block {
+            margin-left: 150px;
+        }
+        .required {
+            color: #FF5722;
+            margin-right: 3px;
+        }
+        .transfer-table {
+            margin-top: 15px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-draft {
+            background-color: #9E9E9E;
+        }
+        .status-pending {
+            background-color: #FF9800;
+        }
+        .status-approved {
+            background-color: #4CAF50;
+        }
+        .status-rejected {
+            background-color: #F44336;
+        }
+        .status-completed {
+            background-color: #2196F3;
+        }
+        .operate-btn {
+            margin: 0 2px;
+        }
+        .search-bar {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-input {
+            width: 250px;
+        }
+        .add-row-btn {
+            margin-bottom: 10px;
+        }
+        .stock-warning {
+            color: #FF5722;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        .stock-warning.show {
+            display: block;
+        }
+        .warehouse-info {
+            display: flex;
+            gap: 20px;
+        }
+        .warehouse-item {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面标题 -->
+    <div class="page-title">
+        <i class="fa fa-exchange"></i>
+        <span>库存调拨管理</span>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <!-- 标签页 -->
+            <div class="layui-tab" lay-allowClose="false" lay-filter="transferTab">
+                <ul class="layui-tab-title">
+                    <li class="layui-this" lay-id="apply">调拨申请</li>
+                    <li lay-id="pending">待审批列表</li>
+                    <li lay-id="processing">处理中调拨</li>
+                    <li lay-id="history">调拨历史</li>
+                </ul>
+                <div class="layui-tab-content">
+                    <!-- 调拨申请表单 -->
+                    <div class="layui-tab-item layui-show" id="applyTab">
+                        <form class="layui-form" lay-filter="transferForm">
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">
+                                    <span class="required">*</span>调拨单号
+                                </label>
+                                <div class="layui-input-block">
+                                    <input type="text" name="transferNo" id="transferNo" readonly 
+                                        class="layui-input layui-disabled" placeholder="系统自动生成">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">
+                                    <span class="required">*</span>申请日期
+                                </label>
+                                <div class="layui-input-block">
+                                    <input type="date" name="applyDate" lay-verify="required" 
+                                        class="layui-input">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">
+                                    <span class="required">*</span>调拨仓库
+                                </label>
+                                <div class="layui-input-block warehouse-info">
+                                    <div class="warehouse-item">
+                                        <label style="display: block; margin-bottom: 5px;">调出仓库</label>
+                                        <select name="outWarehouseId" lay-verify="required" id="outWarehouse" lay-filter="outWarehouse">
+                                            <option value="">请选择调出仓库</option>
+                                            <option value="1">总仓</option>
+                                            <option value="2">华东分仓</option>
+                                            <option value="3">华南分仓</option>
+                                            <option value="4">华北分仓</option>
+                                        </select>
+                                    </div>
+                                    <div class="warehouse-item">
+                                        <label style="display: block; margin-bottom: 5px;">调入仓库</label>
+                                        <select name="inWarehouseId" lay-verify="required" id="inWarehouse">
+                                            <option value="">请选择调入仓库</option>
+                                            <option value="1">总仓</option>
+                                            <option value="2">华东分仓</option>
+                                            <option value="3">华南分仓</option>
+                                            <option value="4">华北分仓</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">调拨原因</label>
+                                <div class="layui-input-block">
+                                    <select name="transferReason">
+                                        <option value="stock_balance">库存平衡</option>
+                                        <option value="sales_demand">销售需求</option>
+                                        <option value="return">退货调拨</option>
+                                        <option value="maintenance">仓库维护</option>
+                                        <option value="other">其他</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">申请人</label>
+                                <div class="layui-input-block">
+                                    <input type="text" name="applicant" class="layui-input" 
+                                        placeholder="请输入申请人姓名">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">调拨产品</label>
+                                <div class="layui-input-block">
+                                    <button type="button" class="layui-btn layui-btn-normal add-row-btn" id="addProductRow">
+                                        <i class="fa fa-plus"></i> 添加产品
+                                    </button>
+                                    
+                                    <table class="layui-table transfer-table" lay-size="sm">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 30px;">序号</th>
+                                                <th>产品名称</th>
+                                                <th>规格</th>
+                                                <th>调出仓库存</th>
+                                                <th>单位</th>
+                                                <th>调拨数量</th>
+                                                <th>备注</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="productTableBody">
+                                            <tr class="product-row">
+                                                <td>1</td>
+                                                <td>
+                                                    <select name="productId[]" lay-verify="required" class="product-select">
+                                                        <option value="">请选择产品</option>
+                                                        <!-- 产品将通过JS动态加载 -->
+                                                    </select>
+                                                </td>
+                                                <td class="specification">-</td>
+                                                <td class="current-stock">-</td>
+                                                <td>
+                                                    <input type="text" name="unit[]" class="layui-input" value="瓶">
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="quantity[]" lay-verify="required|number|min:1" 
+                                                        class="layui-input" value="1">
+                                                    <div class="stock-warning">警告：调拨数量超过库存！</div>
+                                                </td>
+                                                <td>
+                                                    <input type="text" name="remarks[]" class="layui-input" placeholder="可选">
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="layui-btn layui-btn-danger layui-btn-xs remove-row" disabled>
+                                                        <i class="fa fa-minus"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">备注说明</label>
+                                <div class="layui-input-block">
+                                    <textarea name="transferRemarks" class="layui-textarea" rows="3" 
+                                        placeholder="请输入调拨相关说明信息"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <div class="layui-input-block" style="margin-left: 150px;">
+                                    <button class="layui-btn" lay-submit lay-filter="submitTransfer">
+                                        <i class="fa fa-check"></i> 提交审批
+                                    </button>
+                                    <button type="button" class="layui-btn layui-btn-normal" lay-filter="saveDraft">
+                                        <i class="fa fa-save"></i> 保存草稿
+                                    </button>
+                                    <button type="reset" class="layui-btn layui-btn-primary">
+                                        <i class="fa fa-refresh"></i> 重置
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 待审批列表 -->
+                    <div class="layui-tab-item" id="pendingTab">
+                        <div class="search-bar">
+                            <div class="layui-input-group search-input">
+                                <input type="text" placeholder="搜索调拨单号、申请人" class="layui-input" id="pendingSearch">
+                                <div class="layui-input-group-addon">
+                                    <button class="layui-btn" id="searchPending">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="layui-form-item">
+                                <select name="pendingStatus" id="pendingStatus">
+                                    <option value="">全部状态</option>
+                                    <option value="draft">草稿</option>
+                                    <option value="pending">待审批</option>
+                                </select>
+                            </div>
+                            <button class="layui-btn layui-btn-primary" id="refreshPending">
+                                <i class="fa fa-refresh"></i> 刷新
+                            </button>
+                        </div>
+
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" lay-skin="primary" id="checkAllPending">
+                                    </th>
+                                    <th>调拨单号</th>
+                                    <th>申请日期</th>
+                                    <th>调出仓库</th>
+                                    <th>调入仓库</th>
+                                    <th>产品数量</th>
+                                    <th>申请人</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingTableBody">
+                                <!-- 待审批数据将通过JS渲染 -->
+                            </tbody>
+                        </table>
+
+                        <div id="pendingPagination" style="text-align: right; margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- 处理中调拨 -->
+                    <div class="layui-tab-item" id="processingTab">
+                        <div class="search-bar">
+                            <div class="layui-input-group search-input">
+                                <input type="text" placeholder="搜索调拨单号" class="layui-input" id="processingSearch">
+                                <div class="layui-input-group-addon">
+                                    <button class="layui-btn" id="searchProcessing">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="layui-btn layui-btn-primary" id="refreshProcessing">
+                                <i class="fa fa-refresh"></i> 刷新
+                            </button>
+                        </div>
+
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th>调拨单号</th>
+                                    <th>申请日期</th>
+                                    <th>调出仓库</th>
+                                    <th>调入仓库</th>
+                                    <th>审批人</th>
+                                    <th>审批时间</th>
+                                    <th>操作状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="processingTableBody">
+                                <!-- 处理中数据将通过JS渲染 -->
+                            </tbody>
+                        </table>
+
+                        <div id="processingPagination" style="text-align: right; margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- 调拨历史 -->
+                    <div class="layui-tab-item" id="historyTab">
+                        <div class="search-bar">
+                            <div class="layui-input-group search-input">
+                                <input type="text" placeholder="搜索调拨单号、仓库信息" class="layui-input" id="historySearch">
+                                <div class="layui-input-group-addon">
+                                    <button class="layui-btn" id="searchHistory">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="layui-form-item">
+                                <select name="historyStatus" id="historyStatus">
+                                    <option value="">全部状态</option>
+                                    <option value="completed">已完成</option>
+                                    <option value="rejected">已拒绝</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th>调拨单号</th>
+                                    <th>申请日期</th>
+                                    <th>调出仓库</th>
+                                    <th>调入仓库</th>
+                                    <th>产品数量</th>
+                                    <th>申请人</th>
+                                    <th>审批人</th>
+                                    <th>完成时间</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <!-- 历史数据将通过JS渲染 -->
+                            </tbody>
+                        </table>
+
+                        <div id="historyPagination" style="text-align: right; margin-top: 10px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 审批弹窗 -->
+    <div class="layui-modal" id="approvalModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-gavel"></i> 调拨审批
+        </div>
+        <div class="layui-modal-body" style="padding: 20px;">
+            <form class="layui-form" lay-filter="approvalForm">
+                <input type="hidden" name="transferId" id="approvalTransferId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">调拨单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="approvalTransferNo" class="layui-input layui-disabled" readonly>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">
+                        <span class="required">*</span>审批结果
+                    </label>
+                    <div class="layui-input-block">
+                        <input type="radio" name="approvalResult" value="approved" title="同意" checked>
+                        <input type="radio" name="approvalResult" value="rejected" title="拒绝">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审批意见</label>
+                    <div class="layui-input-block">
+                        <textarea name="approvalOpinion" class="layui-textarea" rows="4" 
+                            placeholder="请输入审批意见..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审批人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="approver" lay-verify="required" class="layui-input" 
+                            placeholder="请输入您的姓名">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelApproval">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitApproval">确认审批</button>
+        </div>
+    </div>
+
+    <!-- 调拨确认弹窗 -->
+    <div class="layui-modal" id="confirmModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-check-circle"></i> 确认调拨完成
+        </div>
+        <div class="layui-modal-body" style="padding: 20px;">
+            <form class="layui-form" lay-filter="confirmForm">
+                <input type="hidden" name="transferId" id="confirmTransferId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">调拨单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="confirmTransferNo" class="layui-input layui-disabled" readonly>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">实际调出日期</label>
+                    <div class="layui-input-block">
+                        <input type="date" name="actualOutDate" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">实际调入日期</label>
+                    <div class="layui-input-block">
+                        <input type="date" name="actualInDate" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">经办人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="operator" lay-verify="required" class="layui-input" 
+                            placeholder="请输入经办人姓名">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">调拨备注</label>
+                    <div class="layui-input-block">
+                        <textarea name="confirmRemarks" class="layui-textarea" rows="3" 
+                            placeholder="请输入实际调拨情况备注..."></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelConfirm">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitConfirm">确认完成</button>
+        </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div class="layui-modal" id="detailModal" style="display: none; width: 700px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-list-alt"></i> 调拨详情
+        </div>
+        <div class="layui-modal-body" style="max-height: 500px; overflow-y: auto; padding: 20px;">
+            <div id="detailContent">
+                <!-- 详情内容将通过JS渲染 -->
+            </div>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn" id="closeDetail">关闭</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage', 'element'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage,
+                element = layui.element;
+
+            // 仓库数据
+            var warehouses = [
+                {id: 1, name: "总仓"},
+                {id: 2, name: "华东分仓"},
+                {id: 3, name: "华南分仓"},
+                {id: 4, name: "华北分仓"}
+            ];
+
+            // 产品数据及各仓库库存信息
+            var products = [
+                {id: 1, name: "水润保湿精华液", spec: "50ml", 
+                 stock: {1: 25, 2: 18, 3: 12, 4: 20}},
+                {id: 2, name: "丝绒哑光口红", spec: "3.5g", 
+                 stock: {1: 36, 2: 25, 3: 30, 4: 15}},
+                {id: 3, name: "修护洗发水", spec: "300ml", 
+                 stock: {1: 8, 2: 12, 3: 5, 4: 10}},
+                {id: 4, name: "男士古龙香水", spec: "100ml", 
+                 stock: {1: 15, 2: 8, 3: 12, 4: 5}},
+                {id: 5, name: "焕白面膜", spec: "10片装", 
+                 stock: {1: 42, 2: 30, 3: 25, 4: 35}}
+            ];
+
+            // 生成调拨单号
+            function generateTransferNo() {
+                var date = new Date();
+                var year = date.getFullYear();
+                var month = (date.getMonth() + 1).toString().padStart(2, '0');
+                var day = date.getDate().toString().padStart(2, '0');
+                var random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+                return "DB" + year + month + day + random;
+            }
+
+            // 初始化调拨单号
+            $('#transferNo').val(generateTransferNo());
+
+            // 设置默认日期为今天
+            var today = new Date().toISOString().split('T')[0];
+            $('input[name="applyDate"]').val(today);
+
+            // 初始化产品选择框
+            function initProductSelects() {
+                var productOptions = '<option value="">请选择产品</option>';
+                products.forEach(product => {
+                    productOptions += `<option value="${product.id}">${product.name}</option>`;
+                });
+                $('.product-select').html(productOptions);
+                form.render('select');
+            }
+
+            // 初始化产品选择框
+            initProductSelects();
+
+            // 添加产品行
+            $('#addProductRow').click(function() {
+                var rowCount = $('.product-row').length;
+                var newRow = `
+                    <tr class="product-row">
+                        <td>${rowCount + 1}</td>
+                        <td>
+                            <select name="productId[]" lay-verify="required" class="product-select">
+                                <option value="">请选择产品</option>
+                                ${products.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td class="specification">-</td>
+                        <td class="current-stock">-</td>
+                        <td>
+                            <input type="text" name="unit[]" class="layui-input" value="瓶">
+                        </td>
+                        <td>
+                            <input type="number" name="quantity[]" lay-verify="required|number|min:1" 
+                                class="layui-input" value="1">
+                            <div class="stock-warning">警告：调拨数量超过库存！</div>
+                        </td>
+                        <td>
+                            <input type="text" name="remarks[]" class="layui-input" placeholder="可选">
+                        </td>
+                        <td>
+                            <button type="button" class="layui-btn layui-btn-danger layui-btn-xs remove-row">
+                                <i class="fa fa-minus"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                $('#productTableBody').append(newRow);
+                form.render('select');
+                
+                // 更新删除按钮状态
+                updateRemoveButtonStatus();
+                // 更新产品库存信息（如果已选择调出仓库）
+                updateAllProductStocks();
+            });
+
+            // 移除产品行
+            $(document).on('click', '.remove-row', function() {
+                $(this).closest('.product-row').remove();
+                
+                // 更新序号
+                $('.product-row').each(function(index) {
+                    $(this).find('td:first').text(index + 1);
+                });
+                
+                // 更新删除按钮状态
+                updateRemoveButtonStatus();
+            });
+
+            // 更新删除按钮状态
+            function updateRemoveButtonStatus() {
+                var rowCount = $('.product-row').length;
+                if (rowCount <= 1) {
+                    $('.remove-row').attr('disabled', 'disabled');
+                } else {
+                    $('.remove-row').removeAttr('disabled');
+                }
+            }
+
+            // 当调出仓库变化时，更新所有产品库存
+            form.on('select(outWarehouse)', function(data) {
+                updateAllProductStocks();
+            });
+
+            // 更新所有产品的库存显示
+            function updateAllProductStocks() {
+                var outWarehouseId = $('#outWarehouse').val();
+                if (!outWarehouseId) return;
+                
+                $('.product-row').each(function() {
+                    var productId = $(this).find('.product-select').val();
+                    var stockCell = $(this).find('.current-stock');
+                    var quantityInput = $(this).find('input[name="quantity[]"]');
+                    
+                    if (productId) {
+                        var product = products.find(p => p.id == productId);
+                        if (product && product.stock[outWarehouseId] !== undefined) {
+                            stockCell.text(product.stock[outWarehouseId]);
+                            checkStockQuantity(quantityInput, product.stock[outWarehouseId]);
+                        }
+                    }
+                });
+            }
+
+            // 选择产品时更新规格和库存
+            $(document).on('change', '.product-select', function() {
+                var productId = $(this).val();
+                var row = $(this).closest('tr');
+                var specCell = row.find('.specification');
+                var stockCell = row.find('.current-stock');
+                var quantityInput = row.find('input[name="quantity[]"]');
+                var outWarehouseId = $('#outWarehouse').val();
+                
+                if (productId) {
+                    var product = products.find(p => p.id == productId);
+                    if (product) {
+                        specCell.text(product.spec);
+                        
+                        if (outWarehouseId && product.stock[outWarehouseId] !== undefined) {
+                            stockCell.text(product.stock[outWarehouseId]);
+                            checkStockQuantity(quantityInput, product.stock[outWarehouseId]);
+                        }
+                    }
+                } else {
+                    specCell.text('-');
+                    stockCell.text('-');
+                    row.find('.stock-warning').removeClass('show');
+                }
+            });
+
+            // 检查调拨数量是否超过库存
+            $(document).on('input', 'input[name="quantity[]"]', function() {
+                var quantity = parseInt($(this).val()) || 0;
+                var row = $(this).closest('tr');
+                var stock = parseInt(row.find('.current-stock').text()) || 0;
+                
+                checkStockQuantity($(this), stock);
+            });
+
+            // 检查库存与调拨数量
+            function checkStockQuantity(inputElem, stock) {
+                var quantity = parseInt(inputElem.val()) || 0;
+                var warningElem = inputElem.next('.stock-warning');
+                
+                if (stock > 0 && quantity > stock) {
+                    warningElem.addClass('show');
+                } else {
+                    warningElem.removeClass('show');
+                }
+            }
+
+            // 保存草稿
+            form.on('button(saveDraft)', function() {
+                // 简单验证
+                if (!$('input[name="applyDate"]').val()) {
+                    layer.msg('请选择申请日期', {icon: 2});
+                    return;
+                }
+                
+                if (!$('#outWarehouse').val() || !$('#inWarehouse').val()) {
+                    layer.msg('请选择调出和调入仓库', {icon: 2});
+                    return;
+                }
+                
+                if ($('#outWarehouse').val() === $('#inWarehouse').val()) {
+                    layer.msg('调出仓库和调入仓库不能相同', {icon: 2});
+                    return;
+                }
+                
+                // 模拟保存草稿
+                var index = layer.load(2);
+                setTimeout(function() {
+                    layer.close(index);
+                    layer.msg('草稿已保存', {icon: 1, time: 1500});
+                }, 800);
+            });
+
+            // 提交调拨申请
+            form.on('submit(submitTransfer)', function(data) {
+                // 验证
+                if (!$('#outWarehouse').val() || !$('#inWarehouse').val()) {
+                    layer.msg('请选择调出和调入仓库', {icon: 2});
+                    return false;
+                }
+                
+                if ($('#outWarehouse').val() === $('#inWarehouse').val()) {
+                    layer.msg('调出仓库和调入仓库不能相同', {icon: 2});
+                    return false;
+                }
+                
+                // 验证是否至少有一个产品
+                if ($('.product-row').length === 0) {
+                    layer.msg('请至少添加一个产品', {icon: 2});
+                    return false;
+                }
+                
+                // 检查是否有库存不足的情况
+                var hasStockIssue = false;
+                $('.stock-warning.show').each(function() {
+                    hasStockIssue = true;
+                    return false;
+                });
+                
+                if (hasStockIssue) {
+                    layer.confirm('部分产品调拨数量超过当前库存，是否仍要提交审批？', {
+                        icon: 3,
+                        title: '库存警告'
+                    }, function(index) {
+                        layer.close(index);
+                        submitTransferData();
+                    });
+                    return false;
+                }
+
+                // 提交表单
+                submitTransferData();
+                return false;
+            });
+
+            // 提交调拨数据
+            function submitTransferData() {
+                // 模拟提交
+                var index = layer.load(2);
+                setTimeout(function() {
+                    layer.close(index);
+                    layer.msg('调拨申请已提交审批', {icon: 1, time: 1500}, function() {
+                        // 重置表单
+                        $('#transferNo').val(generateTransferNo());
+                        $('input[name="applyDate"]').val(today);
+                        // 保留一行产品
+                        $('#productTableBody').html($('#productTableBody tr:first').clone());
+                        form.render();
+                        updateRemoveButtonStatus();
+                        
+                        // 切换到待审批标签页
+                        element.tabChange('transferTab', 'pending');
+                        // 刷新待审批列表
+                        renderPendingList();
+                    });
+                }, 1000);
+            }
+
+            // 模拟待审批数据
+            var pendingData = [
+                {
+                    id: 1,
+                    transferNo: "DB202310150001",
+                    applyDate: "2023-10-15",
+                    outWarehouse: "总仓",
+                    outWarehouseId: 1,
+                    inWarehouse: "华东分仓",
+                    inWarehouseId: 2,
+                    productCount: 2,
+                    applicant: "张三",
+                    status: "pending",
+                    statusText: "待审批",
+                    submitTime: "2023-10-15 09:30:22",
+                    products: [
+                        {name: "水润保湿精华液", spec: "50ml", quantity: 5, stock: 25},
+                        {name: "焕白面膜", spec: "10片装", quantity: 10, stock: 42}
+                    ]
+                },
+                {
+                    id: 2,
+                    transferNo: "DB202310140002",
+                    applyDate: "2023-10-14",
+                    outWarehouse: "华南分仓",
+                    outWarehouseId: 3,
+                    inWarehouse: "华北分仓",
+                    inWarehouseId: 4,
+                    productCount: 1,
+                    applicant: "李四",
+                    status: "pending",
+                    statusText: "待审批",
+                    submitTime: "2023-10-14 14:25:10",
+                    products: [
+                        {name: "丝绒哑光口红", spec: "3.5g", quantity: 8, stock: 30}
+                    ]
+                },
+                {
+                    id: 3,
+                    transferNo: "DB202310140001",
+                    applyDate: "2023-10-14",
+                    outWarehouse: "华东分仓",
+                    outWarehouseId: 2,
+                    inWarehouse: "总仓",
+                    inWarehouseId: 1,
+                    productCount: 3,
+                    applicant: "王五",
+                    status: "draft",
+                    statusText: "草稿",
+                    submitTime: "2023-10-14 11:10:05",
+                    products: [
+                        {name: "修护洗发水", spec: "300ml", quantity: 4, stock: 12},
+                        {name: "男士古龙香水", spec: "100ml", quantity: 2, stock: 8},
+                        {name: "丝绒哑光口红", spec: "3.5g", quantity: 5, stock: 25}
+                    ]
+                }
+            ];
+
+            // 模拟处理中数据
+            var processingData = [
+                {
+                    id: 4,
+                    transferNo: "DB202310130002",
+                    applyDate: "2023-10-13",
+                    outWarehouse: "总仓",
+                    outWarehouseId: 1,
+                    inWarehouse: "华南分仓",
+                    inWarehouseId: 3,
+                    productCount: 2,
+                    applicant: "赵六",
+                    approver: "钱七",
+                    approveTime: "2023-10-13 15:30:45",
+                    status: "approved",
+                    statusText: "已审批，待调拨"
+                },
+                {
+                    id: 5,
+                    transferNo: "DB202310120001",
+                    applyDate: "2023-10-12",
+                    outWarehouse: "华北分仓",
+                    outWarehouseId: 4,
+                    inWarehouse: "华东分仓",
+                    inWarehouseId: 2,
+                    productCount: 1,
+                    applicant: "孙八",
+                    approver: "周九",
+                    approveTime: "2023-10-12 10:20:15",
+                    status: "approved",
+                    statusText: "已审批，待调拨"
+                }
+            ];
+
+            // 模拟历史数据
+            var historyData = [
+                {
+                    id: 6,
+                    transferNo: "DB202310110001",
+                    applyDate: "2023-10-11",
+                    outWarehouse: "总仓",
+                    outWarehouseId: 1,
+                    inWarehouse: "华北分仓",
+                    inWarehouseId: 4,
+                    productCount: 2,
+                    applicant: "吴十",
+                    approver: "郑一",
+                    completeTime: "2023-10-12 16:45:30",
+                    status: "completed",
+                    statusText: "已完成"
+                },
+                {
+                    id: 7,
+                    transferNo: "DB202310100002",
+                    applyDate: "2023-10-10",
+                    outWarehouse: "华东分仓",
+                    outWarehouseId: 2,
+                    inWarehouse: "华南分仓",
+                    inWarehouseId: 3,
+                    productCount: 3,
+                    applicant: "王二",
+                    approver: "郑一",
+                    completeTime: "2023-10-11 11:30:20",
+                    status: "completed",
+                    statusText: "已完成"
+                },
+                {
+                    id: 8,
+                    transferNo: "DB202310100001",
+                    applyDate: "2023-10-10",
+                    outWarehouse: "华南分仓",
+                    outWarehouseId: 3,
+                    inWarehouse: "总仓",
+                    inWarehouseId: 1,
+                    productCount: 1,
+                    applicant: "张三",
+                    approver: "郑一",
+                    completeTime: "2023-10-10 14:50:15",
+                    status: "rejected",
+                    statusText: "已拒绝"
+                }
+            ];
+
+            // 渲染待审批列表
+            function renderPendingList() {
+                var html = '';
+                pendingData.forEach(item => {
+                    var statusClass = '';
+                    switch(item.status) {
+                        case 'draft':
+                            statusClass = 'status-draft';
+                            break;
+                        case 'pending':
+                            statusClass = 'status-pending';
+                            break;
+                    }
+                    
+                    html += `<tr>
+                        <td><input type="checkbox" lay-skin="primary" data-id="${item.id}"></td>
+                        <td>${item.transferNo}</td>
+                        <td>${item.applyDate}</td>
+                        <td>${item.outWarehouse}</td>
+                        <td>${item.inWarehouse}</td>
+                        <td>${item.productCount}</td>
+                        <td>${item.applicant}</td>
+                        <td><span class="status-tag ${statusClass}">${item.statusText}</span></td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operate-btn" onclick="viewDetail(${item.id}, 'pending')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                            ${item.status === 'pending' ? `
+                            <button class="layui-btn layui-btn-normal layui-btn-xs operate-btn" onclick="showApprovalModal(${item.id}, '${item.transferNo}')">
+                                <i class="fa fa-gavel"></i> 审批
+                            </button>` : ''}
+                            ${item.status === 'draft' ? `
+                            <button class="layui-btn layui-btn-primary layui-btn-xs operate-btn" onclick="editDraft(${item.id})">
+                                <i class="fa fa-edit"></i> 编辑
+                            </button>` : ''}
+                        </td>
+                    </tr>`;
+                });
+                $('#pendingTableBody').html(html);
+                form.render('checkbox');
+                
+                // 渲染分页
+                renderPendingPagination();
+            }
+
+            // 渲染待审批分页
+            function renderPendingPagination() {
+                laypage.render({
+                    elem: 'pendingPagination',
+                    count: pendingData.length,
+                    limit: 10,
+                    curr: 1,
+                    layout: ['prev', 'page', 'next', 'count']
+                });
+            }
+
+            // 渲染处理中列表
+            function renderProcessingList() {
+                var html = '';
+                processingData.forEach(item => {
+                    var statusClass = 'status-approved';
+                    
+                    html += `<tr>
+                        <td>${item.transferNo}</td>
+                        <td>${item.applyDate}</td>
+                        <td>${item.outWarehouse}</td>
+                        <td>${item.inWarehouse}</td>
+                        <td>${item.approver}</td>
+                        <td>${item.approveTime}</td>
+                        <td><span class="status-tag ${statusClass}">${item.statusText}</span></td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operate-btn" onclick="viewDetail(${item.id}, 'processing')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                            <button class="layui-btn layui-btn-normal layui-btn-xs operate-btn" onclick="showConfirmModal(${item.id}, '${item.transferNo}')">
+                                <i class="fa fa-check-circle"></i> 确认完成
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                $('#processingTableBody').html(html);
+                
+                // 渲染分页
+                renderProcessingPagination();
+            }
+
+            // 渲染处理中分页
+            function renderProcessingPagination() {
+                laypage.render({
+                    elem: 'processingPagination',
+                    count: processingData.length,
+                    limit: 10,
+                    curr: 1,
+                    layout: ['prev', 'page', 'next', 'count']
+                });
+            }
+
+            // 渲染历史列表
+            function renderHistoryList() {
+                var html = '';
+                historyData.forEach(item => {
+                    var statusClass = '';
+                    switch(item.status) {
+                        case 'completed':
+                            statusClass = 'status-completed';
+                            break;
+                        case 'rejected':
+                            statusClass = 'status-rejected';
+                            break;
+                    }
+                    
+                    html += `<tr>
+                        <td>${item.transferNo}</td>
+                        <td>${item.applyDate}</td>
+                        <td>${item.outWarehouse}</td>
+                        <td>${item.inWarehouse}</td>
+                        <td>${item.productCount}</td>
+                        <td>${item.applicant}</td>
+                        <td>${item.approver}</td>
+                        <td>${item.completeTime}</td>
+                        <td><span class="status-tag ${statusClass}">${item.statusText}</span></td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operate-btn" onclick="viewDetail(${item.id}, 'history')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                $('#historyTableBody').html(html);
+                
+                // 渲染分页
+                renderHistoryPagination();
+            }
+
+            // 渲染历史分页
+            function renderHistoryPagination() {
+                laypage.render({
+                    elem: 'historyPagination',
+                    count: historyData.length,
+                    limit: 10,
+                    curr: 1,
+                    layout: ['prev', 'page', 'next', 'count']
+                });
+            }
+
+            // 刷新待审批列表
+            $('#refreshPending').click(function() {
+                var index = layer.load(1);
+                setTimeout(function() {
+                    renderPendingList();
+                    layer.close(index);
+                    layer.msg('已刷新', {icon: 1, time: 1000});
+                }, 500);
+            });
+
+            // 刷新处理中列表
+            $('#refreshProcessing').click(function() {
+                var index = layer.load(1);
+                setTimeout(function() {
+                    renderProcessingList();
+                    layer.close(index);
+                    layer.msg('已刷新', {icon: 1, time: 1000});
+                }, 500);
+            });
+
+            // 搜索待审批
+            $('#searchPending').click(function() {
+                var keyword = $('#pendingSearch').val().toLowerCase();
+                var status = $('#pendingStatus').val();
+                // 实际项目中这里应该根据关键词和状态筛选数据
+                layer.msg('搜索: ' + keyword + ', 状态: ' + status, {icon: 1});
+            });
+
+            // 搜索处理中
+            $('#searchProcessing').click(function() {
+                var keyword = $('#processingSearch').val().toLowerCase();
+                // 实际项目中这里应该根据关键词筛选数据
+                layer.msg('搜索: ' + keyword, {icon: 1});
+            });
+
+            // 搜索历史
+            $('#searchHistory').click(function() {
+                var keyword = $('#historySearch').val().toLowerCase();
+                var status = $('#historyStatus').val();
+                // 实际项目中这里应该根据关键词和状态筛选数据
+                layer.msg('搜索: ' + keyword + ', 状态: ' + status, {icon: 1});
+            });
+
+            // 全选待审批
+            form.on('checkbox(checkAllPending)', function(data) {
+                var checked = data.elem.checked;
+                $('#pendingTableBody [type="checkbox"]').prop('checked', checked);
+                form.render('checkbox');
+            });
+
+            // 显示审批弹窗
+            window.showApprovalModal = function(id, transferNo) {
+                $('#approvalTransferId').val(id);
+                $('#approvalTransferNo').val(transferNo);
+                $('#approvalModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+                form.render('radio');
+            };
+
+            // 关闭审批弹窗
+            $('#cancelApproval').click(function() {
+                $('#approvalModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 提交审批
+            form.on('submit(submitApproval)', function(data) {
+                var transferId = parseInt($('#approvalTransferId').val());
+                var result = data.field.approvalResult;
+                var opinion = data.field.approvalOpinion;
+                var approver = data.field.approver;
+                
+                // 模拟审批操作
+                var index = layer.load(2);
+                setTimeout(function() {
+                    layer.close(index);
+                    $('#approvalModal').hide();
+                    $('.layui-modal-shade').remove();
+                    
+                    // 从待审批列表移除
+                    var itemIndex = pendingData.findIndex(item => item.id === transferId);
+                    if (itemIndex !== -1) {
+                        var item = pendingData.splice(itemIndex, 1)[0];
+                        
+                        // 更新状态
+                        item.status = result;
+                        item.statusText = result === 'approved' ? '已审批，待调拨' : '已拒绝';
+                        item.approver = approver;
+                        item.approveTime = new Date().toLocaleString();
+                        
+                        // 如果审批通过，添加到处理中列表
+                        if (result === 'approved') {
+                            processingData.unshift(item);
+                            renderProcessingList();
+                        } else {
+                            // 如果拒绝，添加到历史列表
+                            item.completeTime = new Date().toLocaleString();
+                            historyData.unshift(item);
+                            renderHistoryList();
+                        }
+                        
+                        // 刷新待审批列表
+                        renderPendingList();
+                        
+                        layer.msg(`审批${result === 'approved' ? '通过' : '拒绝'}成功`, {
+                            icon: 1,
+                            time: 1500
+                        });
+                    }
+                }, 1000);
+                
+                return false;
+            });
+
+            // 显示确认完成弹窗
+            window.showConfirmModal = function(id, transferNo) {
+                $('#confirmTransferId').val(id);
+                $('#confirmTransferNo').val(transferNo);
+                $('input[name="actualOutDate"]').val(today);
+                $('input[name="actualInDate"]').val(today);
+                $('#confirmModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 关闭确认弹窗
+            $('#cancelConfirm').click(function() {
+                $('#confirmModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 提交确认完成
+            form.on('submit(submitConfirm)', function(data) {
+                var transferId = parseInt($('#confirmTransferId').val());
+                var operator = data.field.operator;
+                
+                // 模拟确认操作
+                var index = layer.load(2);
+                setTimeout(function() {
+                    layer.close(index);
+                    $('#confirmModal').hide();
+                    $('.layui-modal-shade').remove();
+                    
+                    // 从处理中列表移除
+                    var itemIndex = processingData.findIndex(item => item.id === transferId);
+                    if (itemIndex !== -1) {
+                        var item = processingData.splice(itemIndex, 1)[0];
+                        
+                        // 更新状态
+                        item.status = 'completed';
+                        item.statusText = '已完成';
+                        item.completeTime = new Date().toLocaleString();
+                        item.operator = operator;
+                        
+                        // 更新产品库存
+                        if (item.products && item.products.length > 0) {
+                            item.products.forEach(p => {
+                                var product = products.find(prod => prod.name === p.name);
+                                if (product) {
+                                    // 减少调出仓库库存
+                                    if (product.stock[item.outWarehouseId] !== undefined) {
+                                        product.stock[item.outWarehouseId] = Math.max(0, 
+                                            product.stock[item.outWarehouseId] - p.quantity);
+                                    }
+                                    // 增加调入仓库库存
+                                    if (product.stock[item.inWarehouseId] !== undefined) {
+                                        product.stock[item.inWarehouseId] = (product.stock[item.inWarehouseId] || 0) + p.quantity;
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // 添加到历史列表
+                        historyData.unshift(item);
+                        renderHistoryList();
+                        
+                        // 刷新处理中列表
+                        renderProcessingList();
+                        
+                        layer.msg('调拨已确认完成', {
+                            icon: 1,
+                            time: 1500
+                        });
+                    }
+                }, 1000);
+                
+                return false;
+            });
+
+            // 查看详情
+            window.viewDetail = function(id, type) {
+                var item = null;
+                if (type === 'pending') {
+                    item = pendingData.find(item => item.id === id);
+                } else if (type === 'processing') {
+                    item = processingData.find(item => item.id === id);
+                } else if (type === 'history') {
+                    item = historyData.find(item => item.id === id);
+                }
+                
+                if (!item) return;
+                
+                var html = `
+                    <div style="margin-bottom: 15px;">
+                        <p><strong>调拨单号：</strong>${item.transferNo}</p>
+                        <p><strong>申请日期：</strong>${item.applyDate}</p>
+                        <p><strong>调出仓库：</strong>${item.outWarehouse}</p>
+                        <p><strong>调入仓库：</strong>${item.inWarehouse}</p>
+                        <p><strong>申请人：</strong>${item.applicant}</p>
+                `;
+                
+                // 根据不同类型显示不同信息
+                if (type === 'pending') {
+                    var statusClass = '';
+                    switch(item.status) {
+                        case 'draft':
+                            statusClass = 'status-draft';
+                            break;
+                        case 'pending':
+                            statusClass = 'status-pending';
+                            break;
+                    }
+                    html += `<p><strong>状态：</strong><span class="status-tag ${statusClass}">${item.statusText}</span></p>`;
+                    html += `<p><strong>提交时间：</strong>${item.submitTime}</p>`;
+                } else if (type === 'processing') {
+                    html += `
+                        <p><strong>审批人：</strong>${item.approver}</p>
+                        <p><strong>审批时间：</strong>${item.approveTime}</p>
+                        <p><strong>状态：</strong><span class="status-tag status-approved">${item.statusText}</span></p>
+                    `;
+                } else if (type === 'history') {
+                    var statusClass = '';
+                    switch(item.status) {
+                        case 'completed':
+                            statusClass = 'status-completed';
+                            break;
+                        case 'rejected':
+                            statusClass = 'status-rejected';
+                            break;
+                    }
+                    html += `
+                        <p><strong>审批人：</strong>${item.approver}</p>
+                        <p><strong>完成时间：</strong>${item.completeTime}</p>
+                        <p><strong>状态：</strong><span class="status-tag ${statusClass}">${item.statusText}</span></p>
+                    `;
+                }
+                
+                html += `</div>
+                <div style="margin-top: 20px;">
+                    <strong>调拨产品列表：</strong>
+                    <table class="layui-table" lay-size="sm" style="margin-top: 10px;">
+                        <thead>
+                            <tr>
+                                <th>产品名称</th>
+                                <th>规格</th>
+                                ${type === 'pending' ? '<th>调出仓库存</th>' : ''}
+                                <th>调拨数量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                if (item.products && item.products.length > 0) {
+                    item.products.forEach(p => {
+                        html += `
+                            <tr>
+                                <td>${p.name}</td>
+                                <td>${p.spec || '-'}</td>
+                                ${type === 'pending' ? `<td>${p.stock || '-'}</td>` : ''}
+                                <td>${p.quantity}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    html += `
+                        <tr>
+                            <td colspan="${type === 'pending' ? '4' : '3'}">无产品信息</td>
+                        </tr>
+                    `;
+                }
+                
+                html += `
+                        </tbody>
+                    </table>
+                </div>
+                `;
+                
+                $('#detailContent').html(html);
+                $('#detailModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 关闭详情弹窗
+            $('#closeDetail').click(function() {
+                $('#detailModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 编辑草稿
+            window.editDraft = function(id) {
+                // 在实际应用中，这里会加载草稿数据到表单中
+                layer.msg('加载草稿进行编辑', {icon: 1});
+                element.tabChange('transferTab', 'apply');
+            };
+
+            // 标签切换事件
+            element.on('tab(transferTab)', function(data) {
+                var layId = $(this).attr('lay-id');
+                if (layId === 'pending' && $('#pendingTableBody tr').length === 0) {
+                    renderPendingList();
+                } else if (layId === 'processing' && $('#processingTableBody tr').length === 0) {
+                    renderProcessingList();
+                } else if (layId === 'history' && $('#historyTableBody tr').length === 0) {
+                    renderHistoryList();
+                }
+            });
+
+            // 初始化表单渲染
+            form.render();
+        });
+    </script>
+</body>
+</html>

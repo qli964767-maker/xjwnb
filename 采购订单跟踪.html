@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>采购订单跟踪系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+        }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-item {
+            flex: 1;
+            min-width: 200px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-draft { background-color: #9E9E9E; }
+        .status-submitted { background-color: #FF9800; }
+        .status-confirmed { background-color: #4CAF50; }
+        .status-partial { background-color: #795548; }
+        .status-received { background-color: #2196F3; }
+        .status-canceled { background-color: #F44336; }
+        .status-rejected { background-color: #9C27B0; }
+        
+        .timeline {
+            position: relative;
+            margin: 20px 0;
+            padding-left: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e6e6e6;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -30px;
+            top: 0;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #1E9FFF;
+        }
+        .timeline-item.active::before {
+            background: #1E9FFF;
+        }
+        .timeline-content {
+            background: #fff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .timeline-time {
+            color: #999;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        .order-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .summary-card {
+            flex: 1;
+            min-width: 150px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .summary-label {
+            color: #666;
+            font-size: 12px;
+        }
+        .summary-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1E9FFF;
+            margin-top: 5px;
+        }
+        .summary-value.amount {
+            color: #F44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-title">
+        <i class="fa fa-line-chart"></i> 采购订单跟踪
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <div class="search-bar">
+                <div class="search-item">
+                    <div class="layui-input-group">
+                        <input type="text" placeholder="搜索订单编号/供应商" class="layui-input" id="orderSearch">
+                        <div class="layui-input-group-addon">
+                            <button class="layui-btn" id="searchBtn">
+                                <i class="fa fa-search"></i> 搜索
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="search-item">
+                    <select name="orderStatus" id="orderStatus" lay-filter="statusFilter">
+                        <option value="">全部状态</option>
+                        <option value="draft">草稿</option>
+                        <option value="submitted">已提交</option>
+                        <option value="confirmed">已确认</option>
+                        <option value="partial">部分收货</option>
+                        <option value="received">已收货</option>
+                        <option value="canceled">已取消</option>
+                        <option value="rejected">已驳回</option>
+                    </select>
+                </div>
+                <div class="search-item">
+                    <select name="timeRange" id="timeRange">
+                        <option value="">全部时间</option>
+                        <option value="week">近一周</option>
+                        <option value="month">近一个月</option>
+                        <option value="quarter">近三个月</option>
+                        <option value="year">近一年</option>
+                    </select>
+                </div>
+                <div class="search-item">
+                    <button class="layui-btn layui-btn-primary" id="refreshBtn">
+                        <i class="fa fa-refresh"></i> 刷新
+                    </button>
+                </div>
+            </div>
+
+            <table class="layui-table" lay-size="sm">
+                <thead>
+                    <tr>
+                        <th>订单编号</th>
+                        <th>订单日期</th>
+                        <th>供应商</th>
+                        <th>总金额</th>
+                        <th>预计到货日</th>
+                        <th>当前状态</th>
+                        <th>跟踪进度</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="orderTable">
+                    <tr>
+                        <td>PO20231016001</td>
+                        <td>2023-10-16</td>
+                        <td>美妆供应链有限公司</td>
+                        <td>¥6,895.00</td>
+                        <td>2023-10-23</td>
+                        <td><span class="status-tag status-confirmed">已确认</span></td>
+                        <td>
+                            <div class="layui-progress layui-progress-big" lay-showpercent="yes" lay-filter="progress1">
+                                <div class="layui-progress-bar" lay-percent="60%"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="viewDetail('PO20231016001')">
+                                <i class="fa fa-eye"></i> 详情
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>PO20231015001</td>
+                        <td>2023-10-15</td>
+                        <td>国际化妆品贸易公司</td>
+                        <td>¥10,830.00</td>
+                        <td>2023-10-22</td>
+                        <td><span class="status-tag status-partial">部分收货</span></td>
+                        <td>
+                            <div class="layui-progress layui-progress-big" lay-showpercent="yes" lay-filter="progress2">
+                                <div class="layui-progress-bar" lay-percent="80%"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="viewDetail('PO20231015001')">
+                                <i class="fa fa-eye"></i> 详情
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>PO20231010001</td>
+                        <td>2023-10-10</td>
+                        <td>国际化妆品贸易公司</td>
+                        <td>¥9,840.00</td>
+                        <td>2023-10-17</td>
+                        <td><span class="status-tag status-received">已收货</span></td>
+                        <td>
+                            <div class="layui-progress layui-progress-big" lay-showpercent="yes" lay-filter="progress3">
+                                <div class="layui-progress-bar" lay-percent="100%"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="viewDetail('PO20231010001')">
+                                <i class="fa fa-eye"></i> 详情
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>PO20231005001</td>
+                        <td>2023-10-05</td>
+                        <td>日用百货批发中心</td>
+                        <td>¥3,850.00</td>
+                        <td>2023-10-12</td>
+                        <td><span class="status-tag status-canceled">已取消</span></td>
+                        <td>
+                            <div class="layui-progress layui-progress-big" lay-showpercent="yes" lay-filter="progress4">
+                                <div class="layui-progress-bar" lay-percent="30%"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="viewDetail('PO20231005001')">
+                                <i class="fa fa-eye"></i> 详情
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="text-align: right;">
+                <div id="pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 订单详情弹窗 -->
+    <div class="layui-modal" id="detailModal" style="display: none; width: 900px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-file-text-o"></i> 订单详情 - <span id="detailOrderNo"></span>
+        </div>
+        <div class="layui-modal-body" style="max-height: 600px; overflow-y: auto;">
+            <div class="order-summary">
+                <div class="summary-card">
+                    <div class="summary-label">订单日期</div>
+                    <div class="summary-value" id="detailOrderDate"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">供应商</div>
+                    <div class="summary-value" id="detailSupplier"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">目标仓库</div>
+                    <div class="summary-value" id="detailWarehouse"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">预计到货日</div>
+                    <div class="summary-value" id="detailExpectDate"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">当前状态</div>
+                    <div class="summary-value" id="detailStatus"></div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">总金额</div>
+                    <div class="summary-value amount" id="detailAmount"></div>
+                </div>
+            </div>
+
+            <div class="layui-card" style="margin-bottom: 15px;">
+                <div class="layui-card-header">
+                    <i class="fa fa-history"></i> 订单跟踪记录
+                </div>
+                <div class="layui-card-body">
+                    <div class="timeline" id="orderTimeline">
+                        <!-- 时间线内容将通过JS动态生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="layui-card" style="margin-bottom: 15px;">
+                <div class="layui-card-header">
+                    <i class="fa fa-list"></i> 产品明细
+                </div>
+                <div class="layui-card-body">
+                    <table class="layui-table" lay-size="sm">
+                        <thead>
+                            <tr>
+                                <th>产品名称</th>
+                                <th>规格</th>
+                                <th>单位</th>
+                                <th>采购数量</th>
+                                <th>已收数量</th>
+                                <th>单价</th>
+                                <th>金额</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productDetailTable">
+                            <!-- 产品明细将通过JS动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <i class="fa fa-truck"></i> 物流信息
+                </div>
+                <div class="layui-card-body" id="logisticsInfo">
+                    <!-- 物流信息将通过JS动态生成 -->
+                </div>
+            </div>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="closeDetail">关闭</button>
+            <button class="layui-btn" id="printOrder" style="display: none;">
+                <i class="fa fa-print"></i> 打印订单
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage', 'element'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage,
+                element = layui.element;
+
+            // 初始化进度条
+            element.render('progress');
+
+            // 订单数据
+            var orderData = {
+                "PO20231016001": {
+                    orderNo: "PO20231016001",
+                    orderDate: "2023-10-16",
+                    supplier: "美妆供应链有限公司",
+                    warehouse: "总仓",
+                    expectDate: "2023-10-23",
+                    status: "已确认",
+                    statusClass: "status-confirmed",
+                    amount: "¥6,895.00",
+                    progress: 60,
+                    timeline: [
+                        {time: "2023-10-16 09:30:22", event: "订单创建", operator: "张采购"},
+                        {time: "2023-10-16 10:15:47", event: "订单提交审核", operator: "张采购"},
+                        {time: "2023-10-16 14:30:11", event: "审核通过", operator: "李经理", comment: "同意采购"},
+                        {time: "2023-10-16 15:05:33", event: "订单已确认", operator: "系统", comment: "已通知供应商"}
+                    ],
+                    products: [
+                        {name: "水润保湿精华液", spec: "50ml", unit: "瓶", 
+                         quantity: 22, received: 0, price: "105.00", amount: "2,310.00", status: "未收货"},
+                        {name: "修护洗发水", spec: "300ml", unit: "瓶", 
+                         quantity: 23, received: 0, price: "56.00", amount: "1,288.00", status: "未收货"},
+                        {name: "保湿面霜", spec: "50g", unit: "瓶", 
+                         quantity: 30, received: 0, price: "90.00", amount: "2,700.00", status: "未收货"}
+                    ],
+                    logistics: {
+                        company: "XX物流",
+                        trackingNo: "SF1234567890123",
+                        status: "运输中",
+                        latestInfo: "2023-10-18 16:00:00 包裹已发出，正在运往目的地"
+                    }
+                },
+                "PO20231015001": {
+                    orderNo: "PO20231015001",
+                    orderDate: "2023-10-15",
+                    supplier: "国际化妆品贸易公司",
+                    warehouse: "华南分仓",
+                    expectDate: "2023-10-22",
+                    status: "部分收货",
+                    statusClass: "status-partial",
+                    amount: "¥10,830.00",
+                    progress: 80,
+                    timeline: [
+                        {time: "2023-10-15 11:20:15", event: "订单创建", operator: "王采购"},
+                        {time: "2023-10-15 11:45:33", event: "订单提交审核", operator: "王采购"},
+                        {time: "2023-10-15 15:20:47", event: "审核通过", operator: "李经理"},
+                        {time: "2023-10-15 16:05:12", event: "订单已确认", operator: "系统"},
+                        {time: "2023-10-20 09:15:33", event: "部分收货", operator: "刘仓库", comment: "收到焕白面膜30盒"}
+                    ],
+                    products: [
+                        {name: "焕白面膜", spec: "10片装", unit: "盒", 
+                         quantity: 60, received: 30, price: "128.00", amount: "7,680.00", status: "部分收货"},
+                        {name: "男士古龙香水", spec: "100ml", unit: "瓶", 
+                         quantity: 25, received: 0, price: "165.00", amount: "4,125.00", status: "未收货"}
+                    ],
+                    logistics: {
+                        company: "YY物流",
+                        trackingNo: "YD9876543210123",
+                        status: "部分送达",
+                        latestInfo: "2023-10-20 09:00:00 部分包裹已送达仓库"
+                    }
+                },
+                "PO20231010001": {
+                    orderNo: "PO20231010001",
+                    orderDate: "2023-10-10",
+                    supplier: "国际化妆品贸易公司",
+                    warehouse: "总仓",
+                    expectDate: "2023-10-17",
+                    status: "已收货",
+                    statusClass: "status-received",
+                    amount: "¥9,840.00",
+                    progress: 100,
+                    timeline: [
+                        {time: "2023-10-10 09:10:22", event: "订单创建", operator: "张采购"},
+                        {time: "2023-10-10 09:35:11", event: "订单提交审核", operator: "张采购"},
+                        {time: "2023-10-10 11:20:45", event: "审核通过", operator: "赵经理"},
+                        {time: "2023-10-10 13:45:33", event: "订单已确认", operator: "系统"},
+                        {time: "2023-10-16 10:30:22", event: "全部收货", operator: "孙仓库", comment: "数量核对无误，质量合格"},
+                        {time: "2023-10-16 14:20:15", event: "订单完成", operator: "系统"}
+                    ],
+                    products: [
+                        {name: "水润保湿精华液", spec: "50ml", unit: "瓶", 
+                         quantity: 20, received: 20, price: "102.00", amount: "2,040.00", status: "已收货"},
+                        {name: "丝绒哑光口红", spec: "3.5g", unit: "支", 
+                         quantity: 30, received: 30, price: "75.00", amount: "2,250.00", status: "已收货"},
+                        {name: "男士古龙香水", spec: "100ml", unit: "瓶", 
+                         quantity: 15, received: 15, price: "165.00", amount: "2,475.00", status: "已收货"},
+                        {name: "温和洁面乳", spec: "120g", unit: "支", 
+                         quantity: 40, received: 40, price: "48.00", amount: "1,920.00", status: "已收货"}
+                    ],
+                    logistics: {
+                        company: "XX物流",
+                        trackingNo: "SF1234567890123",
+                        status: "已签收",
+                        latestInfo: "2023-10-16 10:30:00 包裹已签收，签收人：孙仓库"
+                    }
+                },
+                "PO20231005001": {
+                    orderNo: "PO20231005001",
+                    orderDate: "2023-10-05",
+                    supplier: "日用百货批发中心",
+                    warehouse: "华东分仓",
+                    expectDate: "2023-10-12",
+                    status: "已取消",
+                    statusClass: "status-canceled",
+                    amount: "¥3,850.00",
+                    progress: 30,
+                    timeline: [
+                        {time: "2023-10-05 14:20:15", event: "订单创建", operator: "王采购"},
+                        {time: "2023-10-05 14:45:33", event: "订单提交审核", operator: "王采购"},
+                        {time: "2023-10-05 16:10:22", event: "审核通过", operator: "李经理"},
+                        {time: "2023-10-06 15:20:10", event: "订单取消", operator: "周主管", comment: "供应商缺货，无法按时交货"}
+                    ],
+                    products: [
+                        {name: "丝绒哑光口红", spec: "3.5g", unit: "支", 
+                         quantity: 20, received: 0, price: "73.00", amount: "1,460.00", status: "已取消"},
+                        {name: "修护洗发水", spec: "300ml", unit: "瓶", 
+                         quantity: 30, received: 0, price: "55.00", amount: "1,650.00", status: "已取消"}
+                    ],
+                    logistics: {
+                        company: "",
+                        trackingNo: "",
+                        status: "未发货",
+                        latestInfo: "订单已取消，未安排物流"
+                    }
+                }
+            };
+
+            // 查看订单详情
+            window.viewDetail = function(orderNo) {
+                var order = orderData[orderNo];
+                if (!order) return;
+
+                // 填充基本信息
+                $('#detailOrderNo').text(order.orderNo);
+                $('#detailOrderDate').text(order.orderDate);
+                $('#detailSupplier').text(order.supplier);
+                $('#detailWarehouse').text(order.warehouse);
+                $('#detailExpectDate').text(order.expectDate);
+                $('#detailStatus').html(`<span class="status-tag ${order.statusClass}">${order.status}</span>`);
+                $('#detailAmount').text(order.amount);
+
+                // 生成时间线
+                var timelineHtml = '';
+                order.timeline.forEach((item, index) => {
+                    timelineHtml += `
+                        <div class="timeline-item ${index === order.timeline.length - 1 ? 'active' : ''}">
+                            <div class="timeline-time">${item.time}</div>
+                            <div class="timeline-content">
+                                <div><strong>${item.event}</strong> <span style="color:#666; margin-left:10px;">操作人：${item.operator}</span></div>
+                                ${item.comment ? `<div style="margin-top:5px; color:#666;">备注：${item.comment}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                $('#orderTimeline').html(timelineHtml);
+
+                // 生成产品明细
+                var productHtml = '';
+                order.products.forEach(product => {
+                    productHtml += `
+                        <tr>
+                            <td>${product.name}</td>
+                            <td>${product.spec}</td>
+                            <td>${product.unit}</td>
+                            <td>${product.quantity}</td>
+                            <td>${product.received}</td>
+                            <td>¥${product.price}</td>
+                            <td>¥${product.amount}</td>
+                            <td>${product.status}</td>
+                        </tr>
+                    `;
+                });
+                $('#productDetailTable').html(productHtml);
+
+                // 生成物流信息
+                var logisticsHtml = `
+                    <div class="layui-form-item">
+                        <label class="layui-form-label" style="width: 100px;">物流公司</label>
+                        <div class="layui-input-block" style="margin-left: 130px;">
+                            ${order.logistics.company || '-'}
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label" style="width: 100px;">物流单号</label>
+                        <div class="layui-input-block" style="margin-left: 130px;">
+                            ${order.logistics.trackingNo || '-'}
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label" style="width: 100px;">物流状态</label>
+                        <div class="layui-input-block" style="margin-left: 130px;">
+                            <span class="status-tag ${getStatusClass(order.logistics.status)}">${order.logistics.status}</span>
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label" style="width: 100px;">最新动态</label>
+                        <div class="layui-input-block" style="margin-left: 130px;">
+                            ${order.logistics.latestInfo}
+                        </div>
+                    </div>
+                `;
+                $('#logisticsInfo').html(logisticsHtml);
+
+                // 显示弹窗
+                $('#detailModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+                $('#printOrder').show();
+            };
+
+            // 获取状态对应的样式类
+            function getStatusClass(status) {
+                switch(status) {
+                    case '运输中': return 'status-confirmed';
+                    case '已签收': return 'status-received';
+                    case '部分送达': return 'status-partial';
+                    case '未发货': return 'status-draft';
+                    default: return '';
+                }
+            }
+
+            // 关闭详情弹窗
+            $('#closeDetail').click(function() {
+                $('#detailModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 搜索订单
+            $('#searchBtn').click(function() {
+                var keyword = $('#orderSearch').val().toLowerCase();
+                // 实际应用中这里会根据关键词筛选订单
+                layer.msg('搜索功能：' + keyword, {icon: 1});
+            });
+
+            // 刷新订单列表
+            $('#refreshBtn').click(function() {
+                var loadIndex = layer.load(2);
+                setTimeout(function() {
+                    layer.close(loadIndex);
+                    layer.msg('订单列表已刷新', {icon: 1});
+                }, 800);
+            });
+
+            // 打印订单
+            $('#printOrder').click(function() {
+                layer.msg('打印功能已触发', {icon: 1});
+            });
+
+            // 初始化分页
+            laypage.render({
+                elem: 'pagination',
+                count: 20, // 数据总数
+                limit: 10,
+                limits: [5, 10, 20],
+                layout: ['prev', 'page', 'next', 'count', 'limit'],
+                jump: function(obj) {
+                    // 分页切换时触发
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+    

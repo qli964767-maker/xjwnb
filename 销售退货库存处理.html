@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>销售退货库存处理系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-pending { background-color: #9e9e9e; } /* 待处理 */
+        .status-inspecting { background-color: #2196f3; } /* 质检中 */
+        .status-qualified { background-color: #4CAF50; } /* 合格入库 */
+        .status-unqualified { background-color: #F44336; } /* 不合格 */
+        .status-partial { background-color: #FF9800; } /* 部分合格 */
+        
+        .return-reason {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+        .reason-quality { background-color: #ffebee; color: #c62828; }
+        .reason-wrong { background-color: #fff3e0; color: #ef6c00; }
+        .reason-unwanted { background-color: #e8f5e9; color: #2e7d32; }
+        .reason-other { background-color: #e0e0e0; color: #424242; }
+        
+        .operation-btn {
+            margin-right: 5px;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 15px 0;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-title">
+            <i class="fa fa-exchange" style="color: #2196f3;"></i> 销售退货库存处理
+        </div>
+        <button class="layui-btn" id="addReturnBtn">
+            <i class="fa fa-plus"></i> 新增退货单
+        </button>
+    </div>
+
+    <!-- 退货数据统计 -->
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md3">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #2196f3;">28</div>
+                <div class="stat-label">本月退货单数</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #4CAF50;">15</div>
+                <div class="stat-label">合格入库商品数</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #F44336;">8</div>
+                <div class="stat-label">不合格商品数</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="layui-card stat-card">
+                <div class="stat-value" style="color: #FF9800;">5</div>
+                <div class="stat-label">待处理退货单</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 退货原因分析 -->
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header">退货原因分布</div>
+                <div class="layui-card-body">
+                    <div style="height: 250px;">
+                        <canvas id="reasonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header">退货处理时效</div>
+                <div class="layui-card-body">
+                    <div style="height: 250px;">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 退货单列表 -->
+    <div class="layui-card">
+        <div class="layui-card-header">
+            退货单列表
+        </div>
+        <div class="layui-card-body">
+            <div class="layui-form">
+                <div class="layui-input-inline" style="width: 200px;">
+                    <input type="text" name="returnNo" placeholder="退货单号" autocomplete="off" class="layui-input">
+                </div>
+                <div class="layui-input-inline" style="width: 200px;">
+                    <input type="text" name="orderNo" placeholder="原订单号" autocomplete="off" class="layui-input">
+                </div>
+                <div class="layui-input-inline" style="width: 180px;">
+                    <select name="status">
+                        <option value="">全部状态</option>
+                        <option value="pending">待处理</option>
+                        <option value="inspecting">质检中</option>
+                        <option value="qualified">合格入库</option>
+                        <option value="unqualified">不合格</option>
+                        <option value="partial">部分合格</option>
+                    </select>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchReturn">
+                    <i class="fa fa-search"></i> 搜索
+                </button>
+                <button class="layui-btn layui-btn-primary" id="refreshList">
+                    <i class="fa fa-refresh"></i> 刷新
+                </button>
+            </div>
+
+            <table class="layui-table" lay-size="sm" style="margin-top: 15px;">
+                <thead>
+                    <tr>
+                        <th>退货单号</th>
+                        <th>原订单号</th>
+                        <th>退货日期</th>
+                        <th>商品信息</th>
+                        <th>退货数量</th>
+                        <th>退货原因</th>
+                        <th>处理状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 待处理退货单 -->
+                    <tr>
+                        <td>RTN20231016001</td>
+                        <td>ORD20231010056</td>
+                        <td>2023-10-16</td>
+                        <td>
+                            <div>丝绒哑光口红（#正红色）</div>
+                            <div style="font-size: 12px; color: #666;">编码：G002 | 规格：3.5g</div>
+                        </td>
+                        <td>2</td>
+                        <td>
+                            <span class="return-reason reason-quality">质量问题</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-pending">待处理</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operation-btn" onclick="handleReturn('RTN20231016001')">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                            <button class="layui-btn layui-btn-xs layui-btn-primary" onclick="viewReturn('RTN20231016001')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 质检中退货单 -->
+                    <tr>
+                        <td>RTN20231015008</td>
+                        <td>ORD20231009042</td>
+                        <td>2023-10-15</td>
+                        <td>
+                            <div>水润保湿精华液</div>
+                            <div style="font-size: 12px; color: #666;">编码：G001 | 规格：50ml</div>
+                        </td>
+                        <td>1</td>
+                        <td>
+                            <span class="return-reason reason-wrong">错发商品</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-inspecting">质检中</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operation-btn" onclick="handleReturn('RTN20231015008')">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                            <button class="layui-btn layui-btn-xs layui-btn-primary" onclick="viewReturn('RTN20231015008')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 合格入库退货单 -->
+                    <tr>
+                        <td>RTN20231015005</td>
+                        <td>ORD20231008036</td>
+                        <td>2023-10-15</td>
+                        <td>
+                            <div>焕白面膜（10片装）</div>
+                            <div style="font-size: 12px; color: #666;">编码：G004 | 规格：10片/盒</div>
+                        </td>
+                        <td>3</td>
+                        <td>
+                            <span class="return-reason reason-unwanted">客户不想要</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-qualified">合格入库</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-primary" onclick="viewReturn('RTN20231015005')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 不合格退货单 -->
+                    <tr>
+                        <td>RTN20231014002</td>
+                        <td>ORD20231005028</td>
+                        <td>2023-10-14</td>
+                        <td>
+                            <div>修护洗发水</div>
+                            <div style="font-size: 12px; color: #666;">编码：G003 | 规格：300ml</div>
+                        </td>
+                        <td>1</td>
+                        <td>
+                            <span class="return-reason reason-quality">质量问题</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-unqualified">不合格</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-primary" onclick="viewReturn('RTN20231014002')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- 部分合格退货单 -->
+                    <tr>
+                        <td>RTN20231014001</td>
+                        <td>ORD20231003015</td>
+                        <td>2023-10-14</td>
+                        <td>
+                            <div>温和洁面乳</div>
+                            <div style="font-size: 12px; color: #666;">编码：G005 | 规格：120g</div>
+                        </td>
+                        <td>5</td>
+                        <td>
+                            <span class="return-reason reason-other">其他原因</span>
+                        </td>
+                        <td>
+                            <span class="status-tag status-partial">部分合格</span>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-primary" onclick="viewReturn('RTN20231014001')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="text-align: right;">
+                <div id="pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 退货处理弹窗 -->
+    <div class="layui-modal" id="handleReturnModal" style="display: none; width: 600px;">
+        <div class="layui-modal-title" id="handleModalTitle">
+            <i class="fa fa-cog"></i> 退货处理 - RTN20231016001
+        </div>
+        <div class="layui-modal-body" style="max-height: 500px; overflow-y: auto;">
+            <form class="layui-form" lay-filter="handleReturnForm">
+                <input type="hidden" name="returnId" id="returnId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">退货单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="returnNo" id="handleReturnNo" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">原订单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="orderNo" id="handleOrderNo" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">商品信息</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="productName" id="handleProductName" class="layui-input" disabled>
+                        <div style="margin-top: 5px; font-size: 12px; color: #666;" id="handleProductSpec"></div>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">退货数量</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="returnQuantity" id="handleReturnQuantity" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">退货原因</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="returnReason" id="handleReturnReason" class="layui-input" disabled>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">质检结果</label>
+                    <div class="layui-input-block">
+                        <radio name="inspectResult" value="qualified">全部合格</radio>
+                        <radio name="inspectResult" value="unqualified">全部不合格</radio>
+                        <radio name="inspectResult" value="partial" checked>部分合格</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" id="qualifiedQuantityContainer">
+                    <label class="layui-form-label">合格数量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="qualifiedQuantity" lay-verify="required|number" min="0" 
+                            id="qualifiedQuantity" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理方式</label>
+                    <div class="layui-input-block">
+                        <select name="processMethod" lay-verify="required">
+                            <option value="stock">合格商品入库</option>
+                            <option value="discard">不合格商品报废</option>
+                            <option value="returnSupplier">退回供应商</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">质检备注</label>
+                    <div class="layui-input-block">
+                        <textarea name="inspectRemark" class="layui-textarea" rows="3" 
+                            placeholder="请输入质检情况和处理意见"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelHandle">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitHandle">确认处理</button>
+        </div>
+    </div>
+
+    <!-- 新增退货单弹窗 -->
+    <div class="layui-modal" id="addReturnModal" style="display: none; width: 600px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-plus"></i> 新增退货单
+        </div>
+        <div class="layui-modal-body" style="max-height: 500px; overflow-y: auto;">
+            <form class="layui-form" lay-filter="addReturnForm">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">原订单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="orderNo" lay-verify="required" placeholder="请输入原订单号" 
+                            class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">选择商品</label>
+                    <div class="layui-input-block">
+                        <select name="productId" lay-verify="required" id="productSelect">
+                            <option value="">请选择退货商品</option>
+                            <option value="G001">G001 - 水润保湿精华液 (50ml)</option>
+                            <option value="G002">G002 - 丝绒哑光口红 (3.5g #正红色)</option>
+                            <option value="G003">G003 - 修护洗发水 (300ml)</option>
+                            <option value="G004">G004 - 焕白面膜 (10片装)</option>
+                            <option value="G005">G005 - 温和洁面乳 (120g)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">退货数量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="returnQuantity" lay-verify="required|number" min="1" 
+                            placeholder="请输入退货数量" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">退货原因</label>
+                    <div class="layui-input-block">
+                        <radio name="returnReason" value="quality" checked>质量问题</radio>
+                        <radio name="returnReason" value="wrong">错发商品</radio>
+                        <radio name="returnReason" value="unwanted">客户不想要</radio>
+                        <radio name="returnReason" value="other">其他原因</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" id="reasonDetailContainer">
+                    <label class="layui-form-label">原因详情</label>
+                    <div class="layui-input-block">
+                        <textarea name="reasonDetail" class="layui-textarea" rows="3" 
+                            placeholder="请详细描述退货原因"></textarea>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">退货人信息</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="returnPerson" placeholder="退货人姓名" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">联系方式</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="contactInfo" placeholder="退货人联系电话" class="layui-input">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelAdd">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitAdd">创建退货单</button>
+        </div>
+    </div>
+
+    <!-- 查看退货单弹窗 -->
+    <div class="layui-modal" id="viewReturnModal" style="display: none; width: 600px;">
+        <div class="layui-modal-title" id="viewModalTitle">
+            <i class="fa fa-eye"></i> 退货单详情 - RTN20231016001
+        </div>
+        <div class="layui-modal-body" style="max-height: 500px; overflow-y: auto;">
+            <table class="layui-table layui-table-borderless" lay-size="sm">
+                <tr>
+                    <td style="width: 100px;">退货单号</td>
+                    <td id="viewReturnNo">RTN20231016001</td>
+                </tr>
+                <tr>
+                    <td>原订单号</td>
+                    <td id="viewOrderNo">ORD20231010056</td>
+                </tr>
+                <tr>
+                    <td>退货日期</td>
+                    <td id="viewReturnDate">2023-10-16</td>
+                </tr>
+                <tr>
+                    <td>商品信息</td>
+                    <td>
+                        <div id="viewProductName">丝绒哑光口红（#正红色）</div>
+                        <div style="font-size: 12px; color: #666;" id="viewProductSpec">编码：G002 | 规格：3.5g</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>退货数量</td>
+                    <td id="viewReturnQuantity">2</td>
+                </tr>
+                <tr>
+                    <td>退货原因</td>
+                    <td id="viewReturnReason">
+                        <span class="return-reason reason-quality">质量问题</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>退货人</td>
+                    <td id="viewReturnPerson">张三</td>
+                </tr>
+                <tr>
+                    <td>联系方式</td>
+                    <td id="viewContactInfo">138****6789</td>
+                </tr>
+                <tr>
+                    <td>处理状态</td>
+                    <td id="viewStatus">
+                        <span class="status-tag status-pending">待处理</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>质检结果</td>
+                    <td id="viewInspectResult">-</td>
+                </tr>
+                <tr>
+                    <td>合格数量</td>
+                    <td id="viewQualifiedQty">-</td>
+                </tr>
+                <tr>
+                    <td>处理方式</td>
+                    <td id="viewProcessMethod">-</td>
+                </tr>
+                <tr>
+                    <td>处理备注</td>
+                    <td id="viewRemark">-</td>
+                </tr>
+                <tr>
+                    <td>处理时间</td>
+                    <td id="viewProcessTime">-</td>
+                </tr>
+            </table>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="closeView">关闭</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage;
+            
+            // 退货单数据
+            var returnData = {
+                "RTN20231016001": {
+                    id: "1",
+                    returnNo: "RTN20231016001",
+                    orderNo: "ORD20231010056",
+                    returnDate: "2023-10-16",
+                    productId: "G002",
+                    productName: "丝绒哑光口红（#正红色）",
+                    productSpec: "编码：G002 | 规格：3.5g",
+                    returnQuantity: 2,
+                    returnReason: "质量问题",
+                    reasonType: "quality",
+                    returnPerson: "张三",
+                    contactInfo: "138****6789",
+                    status: "pending",
+                    statusText: "待处理"
+                },
+                "RTN20231015008": {
+                    id: "2",
+                    returnNo: "RTN20231015008",
+                    orderNo: "ORD20231009042",
+                    returnDate: "2023-10-15",
+                    productId: "G001",
+                    productName: "水润保湿精华液",
+                    productSpec: "编码：G001 | 规格：50ml",
+                    returnQuantity: 1,
+                    returnReason: "错发商品",
+                    reasonType: "wrong",
+                    returnPerson: "李四",
+                    contactInfo: "139****5678",
+                    status: "inspecting",
+                    statusText: "质检中"
+                },
+                "RTN20231015005": {
+                    id: "3",
+                    returnNo: "RTN20231015005",
+                    orderNo: "ORD20231008036",
+                    returnDate: "2023-10-15",
+                    productId: "G004",
+                    productName: "焕白面膜（10片装）",
+                    productSpec: "编码：G004 | 规格：10片/盒",
+                    returnQuantity: 3,
+                    returnReason: "客户不想要",
+                    reasonType: "unwanted",
+                    returnPerson: "王五",
+                    contactInfo: "137****4567",
+                    status: "qualified",
+                    statusText: "合格入库",
+                    inspectResult: "全部合格",
+                    qualifiedQuantity: 3,
+                    processMethod: "stock",
+                    remark: "包装完好，无使用痕迹，已重新入库",
+                    processTime: "2023-10-15 14:30"
+                }
+            };
+            
+            // 初始化图表
+            initCharts();
+            
+            // 初始化分页
+            laypage.render({
+                elem: 'pagination',
+                count: 30,
+                limit: 10,
+                layout: ['prev', 'page', 'next']
+            });
+            
+            // 初始化图表
+            function initCharts() {
+                // 退货原因分布图表
+                const reasonCtx = document.getElementById('reasonChart').getContext('2d');
+                new Chart(reasonCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['质量问题', '错发商品', '客户不想要', '其他原因'],
+                        datasets: [{
+                            data: [12, 5, 8, 3],
+                            backgroundColor: [
+                                '#c62828',
+                                '#ef6c00',
+                                '#2e7d32',
+                                '#424242'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+                
+                // 退货处理时效图表
+                const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+                new Chart(timelineCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['质量问题', '错发商品', '客户不想要', '其他原因'],
+                        datasets: [{
+                            label: '平均处理时长(小时)',
+                            data: [8, 4, 6, 10],
+                            backgroundColor: 'rgba(33, 150, 243, 0.7)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '小时'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 处理退货单
+            window.handleReturn = function(returnNo) {
+                const returnInfo = returnData[returnNo];
+                if (!returnInfo) return;
+                
+                // 填充表单数据
+                $('#handleModalTitle').html(`<i class="fa fa-cog"></i> 退货处理 - ${returnInfo.returnNo}`);
+                $('#returnId').val(returnInfo.id);
+                $('#handleReturnNo').val(returnInfo.returnNo);
+                $('#handleOrderNo').val(returnInfo.orderNo);
+                $('#handleProductName').val(returnInfo.productName);
+                $('#handleProductSpec').html(returnInfo.productSpec);
+                $('#handleReturnQuantity').val(returnInfo.returnQuantity);
+                $('#handleReturnReason').val(returnInfo.returnReason);
+                $('#qualifiedQuantity').val(returnInfo.returnQuantity);
+                
+                // 显示弹窗
+                $('#handleReturnModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+            
+            // 查看退货单
+            window.viewReturn = function(returnNo) {
+                const returnInfo = returnData[returnNo];
+                if (!returnInfo) return;
+                
+                // 填充详情数据
+                $('#viewModalTitle').html(`<i class="fa fa-eye"></i> 退货单详情 - ${returnInfo.returnNo}`);
+                $('#viewReturnNo').text(returnInfo.returnNo);
+                $('#viewOrderNo').text(returnInfo.orderNo);
+                $('#viewReturnDate').text(returnInfo.returnDate);
+                $('#viewProductName').text(returnInfo.productName);
+                $('#viewProductSpec').html(returnInfo.productSpec);
+                $('#viewReturnQuantity').text(returnInfo.returnQuantity);
+                
+                // 设置退货原因标签
+                $('#viewReturnReason').html(`<span class="return-reason reason-${returnInfo.reasonType}">${returnInfo.returnReason}</span>`);
+                
+                $('#viewReturnPerson').text(returnInfo.returnPerson);
+                $('#viewContactInfo').text(returnInfo.contactInfo);
+                
+                // 设置状态标签
+                $('#viewStatus').html(`<span class="status-tag status-${returnInfo.status}">${returnInfo.statusText}</span>`);
+                
+                // 填充处理信息
+                $('#viewInspectResult').text(returnInfo.inspectResult || '-');
+                $('#viewQualifiedQty').text(returnInfo.qualifiedQuantity || '-');
+                $('#viewProcessMethod').text(getProcessMethodText(returnInfo.processMethod) || '-');
+                $('#viewRemark').text(returnInfo.remark || '-');
+                $('#viewProcessTime').text(returnInfo.processTime || '-');
+                
+                // 显示弹窗
+                $('#viewReturnModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+            
+            // 获取处理方式文本
+            function getProcessMethodText(method) {
+                const methodMap = {
+                    'stock': '合格商品入库',
+                    'discard': '不合格商品报废',
+                    'returnSupplier': '退回供应商'
+                };
+                return methodMap[method];
+            }
+            
+            // 打开新增退货单弹窗
+            $('#addReturnBtn').click(function() {
+                $('#addReturnModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            });
+            
+            // 关闭弹窗
+            $('#cancelHandle, #cancelAdd, #closeView').click(function() {
+                $('#handleReturnModal, #addReturnModal, #viewReturnModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+            
+            // 质检结果切换
+            form.on('radio(inspectResult)', function(data) {
+                if (data.value === 'partial') {
+                    $('#qualifiedQuantityContainer').show();
+                } else {
+                    $('#qualifiedQuantityContainer').hide();
+                    // 自动设置合格数量
+                    const totalQty = parseInt($('#handleReturnQuantity').val() || 0);
+                    $('#qualifiedQuantity').val(data.value === 'qualified' ? totalQty : 0);
+                }
+            });
+            
+            // 提交退货处理
+            form.on('submit(submitHandle)', function(data) {
+                const returnNo = $('#handleReturnNo').val();
+                
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#handleReturnModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg(`退货单 ${returnNo} 处理完成`, {icon: 1});
+                }, 1000);
+                
+                return false;
+            });
+            
+            // 提交新增退货单
+            form.on('submit(submitAdd)', function(data) {
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#addReturnModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg('退货单创建成功', {icon: 1});
+                }, 1000);
+                
+                return false;
+            });
+            
+            // 刷新列表
+            $('#refreshList').click(function() {
+                const loadIndex = layer.load(1);
+                setTimeout(function() {
+                    layer.close(loadIndex);
+                    layer.msg('退货单列表已刷新', {icon: 1});
+                }, 800);
+            });
+        });
+    </script>
+</body>
+</html>
+    

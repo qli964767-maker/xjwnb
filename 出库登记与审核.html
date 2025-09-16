@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>化妆品出库管理 - 登记与审核</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .page-title i {
+            color: #FF5722;
+            margin-right: 8px;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .layui-card-header {
+            font-weight: 500;
+            padding: 12px 15px;
+        }
+        .tab-content {
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .layui-form-label {
+            width: 120px;
+        }
+        .layui-input-block {
+            margin-left: 150px;
+        }
+        .required {
+            color: #FF5722;
+            margin-right: 3px;
+        }
+        .stock-table {
+            margin-top: 15px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-pending {
+            background-color: #FF9800;
+        }
+        .status-approved {
+            background-color: #4CAF50;
+        }
+        .status-rejected {
+            background-color: #F44336;
+        }
+        .operate-btn {
+            margin: 0 2px;
+        }
+        .form-tip {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .search-bar {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-input {
+            width: 250px;
+        }
+        .add-row-btn {
+            margin-bottom: 10px;
+        }
+        .stock-warning {
+            color: #FF5722;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        .stock-warning.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面标题 -->
+    <div class="page-title">
+        <i class="fa fa-sign-out"></i>
+        <span>化妆品出库管理</span>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <!-- 标签页 -->
+            <div class="layui-tab" lay-allowClose="false" lay-filter="stockTab">
+                <ul class="layui-tab-title">
+                    <li class="layui-this" lay-id="register">出库登记</li>
+                    <li lay-id="pending">待审核列表</li>
+                    <li lay-id="history">出库历史</li>
+                </ul>
+                <div class="layui-tab-content">
+                    <!-- 出库登记表单 -->
+                    <div class="layui-tab-item layui-show" id="registerTab">
+                        <form class="layui-form" lay-filter="stockOutForm">
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">
+                                    <span class="required">*</span>出库单号
+                                </label>
+                                <div class="layui-input-block">
+                                    <input type="text" name="stockOutNo" id="stockOutNo" readonly 
+                                        class="layui-input layui-disabled" placeholder="系统自动生成">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">
+                                    <span class="required">*</span>出库日期
+                                </label>
+                                <div class="layui-input-block">
+                                    <input type="date" name="stockOutDate" lay-verify="required" 
+                                        class="layui-input">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">
+                                    <span class="required">*</span>出库类型
+                                </label>
+                                <div class="layui-input-block">
+                                    <select name="stockOutType" lay-verify="required">
+                                        <option value="sale">销售出库</option>
+                                        <option value="return">退货出库</option>
+                                        <option value="transfer">调拨出库</option>
+                                        <option value="sample">样品领用</option>
+                                        <option value="damage">报损出库</option>
+                                        <option value="other">其他</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">领用部门/人</label>
+                                <div class="layui-input-block">
+                                    <input type="text" name="recipient" class="layui-input" 
+                                        placeholder="请输入领用部门或人员姓名">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">出库人员</label>
+                                <div class="layui-input-block">
+                                    <input type="text" name="operator" class="layui-input" 
+                                        placeholder="请输入出库操作人员姓名">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">出库产品</label>
+                                <div class="layui-input-block">
+                                    <button type="button" class="layui-btn layui-btn-normal add-row-btn" id="addProductRow">
+                                        <i class="fa fa-plus"></i> 添加产品
+                                    </button>
+                                    
+                                    <table class="layui-table stock-table" lay-size="sm">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 30px;">序号</th>
+                                                <th>产品名称</th>
+                                                <th>规格</th>
+                                                <th>当前库存</th>
+                                                <th>单位</th>
+                                                <th>出库数量</th>
+                                                <th>单价(元)</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="productTableBody">
+                                            <tr class="product-row">
+                                                <td>1</td>
+                                                <td>
+                                                    <select name="productId[]" lay-verify="required" class="product-select">
+                                                        <option value="">请选择产品</option>
+                                                        <option value="1">水润保湿精华液</option>
+                                                        <option value="2">丝绒哑光口红</option>
+                                                        <option value="3">修护洗发水</option>
+                                                        <option value="4">男士古龙香水</option>
+                                                        <option value="5">焕白面膜</option>
+                                                    </select>
+                                                </td>
+                                                <td class="specification">-</td>
+                                                <td class="current-stock">-</td>
+                                                <td>
+                                                    <input type="text" name="unit[]" class="layui-input" value="瓶">
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="quantity[]" lay-verify="required|number|min:1" 
+                                                        class="layui-input" value="1">
+                                                    <div class="stock-warning">警告：出库数量超过当前库存！</div>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="price[]" lay-verify="required|number|min:0" 
+                                                        class="layui-input" step="0.01" value="0.00">
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="layui-btn layui-btn-danger layui-btn-xs remove-row" disabled>
+                                                        <i class="fa fa-minus"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">备注说明</label>
+                                <div class="layui-input-block">
+                                    <textarea name="remarks" class="layui-textarea" rows="3" 
+                                        placeholder="请输入备注信息（如出库原因、特殊情况等）"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <div class="layui-input-block" style="margin-left: 150px;">
+                                    <button class="layui-btn" lay-submit lay-filter="submitStockOut">
+                                        <i class="fa fa-check"></i> 提交审核
+                                    </button>
+                                    <button type="reset" class="layui-btn layui-btn-primary">
+                                        <i class="fa fa-refresh"></i> 重置
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 待审核列表 -->
+                    <div class="layui-tab-item" id="pendingTab">
+                        <div class="search-bar">
+                            <div class="layui-input-group search-input">
+                                <input type="text" placeholder="搜索出库单号、领用信息" class="layui-input" id="pendingSearch">
+                                <div class="layui-input-group-addon">
+                                    <button class="layui-btn" id="searchPending">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="layui-btn layui-btn-primary" id="refreshPending">
+                                <i class="fa fa-refresh"></i> 刷新
+                            </button>
+                        </div>
+
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" lay-skin="primary" id="checkAllPending">
+                                    </th>
+                                    <th>出库单号</th>
+                                    <th>出库日期</th>
+                                    <th>出库类型</th>
+                                    <th>领用信息</th>
+                                    <th>产品数量</th>
+                                    <th>出库人员</th>
+                                    <th>提交时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingTableBody">
+                                <!-- 待审核数据将通过JS渲染 -->
+                            </tbody>
+                        </table>
+
+                        <div id="pendingPagination" style="text-align: right; margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- 出库历史 -->
+                    <div class="layui-tab-item" id="historyTab">
+                        <div class="search-bar">
+                            <div class="layui-input-group search-input">
+                                <input type="text" placeholder="搜索出库单号、领用信息" class="layui-input" id="historySearch">
+                                <div class="layui-input-group-addon">
+                                    <button class="layui-btn" id="searchHistory">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="layui-form-item">
+                                <select name="historyStatus" id="historyStatus">
+                                    <option value="">全部状态</option>
+                                    <option value="pending">待审核</option>
+                                    <option value="approved">已通过</option>
+                                    <option value="rejected">已拒绝</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th>出库单号</th>
+                                    <th>出库日期</th>
+                                    <th>出库类型</th>
+                                    <th>领用信息</th>
+                                    <th>产品数量</th>
+                                    <th>总金额(元)</th>
+                                    <th>审核状态</th>
+                                    <th>审核人</th>
+                                    <th>审核时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <!-- 历史数据将通过JS渲染 -->
+                            </tbody>
+                        </table>
+
+                        <div id="historyPagination" style="text-align: right; margin-top: 10px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 审核弹窗 -->
+    <div class="layui-modal" id="auditModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-gavel"></i> 出库审核
+        </div>
+        <div class="layui-modal-body" style="padding: 20px;">
+            <form class="layui-form" lay-filter="auditForm">
+                <input type="hidden" name="stockOutId" id="auditStockOutId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">出库单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="auditStockOutNo" class="layui-input layui-disabled" readonly>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">
+                        <span class="required">*</span>审核结果
+                    </label>
+                    <div class="layui-input-block">
+                        <input type="radio" name="auditResult" value="approved" title="通过" checked>
+                        <input type="radio" name="auditResult" value="rejected" title="拒绝">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审核意见</label>
+                    <div class="layui-input-block">
+                        <textarea name="auditOpinion" class="layui-textarea" rows="4" 
+                            placeholder="请输入审核意见..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审核人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="auditor" lay-verify="required" class="layui-input" 
+                            placeholder="请输入您的姓名">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelAudit">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitAudit">确认审核</button>
+        </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div class="layui-modal" id="detailModal" style="display: none; width: 700px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-list-alt"></i> 出库详情
+        </div>
+        <div class="layui-modal-body" style="max-height: 500px; overflow-y: auto; padding: 20px;">
+            <div id="detailContent">
+                <!-- 详情内容将通过JS渲染 -->
+            </div>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn" id="closeDetail">关闭</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage', 'element'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage,
+                element = layui.element;
+
+            // 产品数据及库存信息
+            var products = [
+                {id: 1, name: "水润保湿精华液", spec: "50ml", stock: 25},
+                {id: 2, name: "丝绒哑光口红", spec: "3.5g", stock: 36},
+                {id: 3, name: "修护洗发水", spec: "300ml", stock: 8},
+                {id: 4, name: "男士古龙香水", spec: "100ml", stock: 15},
+                {id: 5, name: "焕白面膜", spec: "10片装", stock: 42}
+            ];
+
+            // 生成出库单号
+            function generateStockOutNo() {
+                var date = new Date();
+                var year = date.getFullYear();
+                var month = (date.getMonth() + 1).toString().padStart(2, '0');
+                var day = date.getDate().toString().padStart(2, '0');
+                var random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+                return "CK" + year + month + day + random;
+            }
+
+            // 初始化出库单号
+            $('#stockOutNo').val(generateStockOutNo());
+
+            // 设置默认日期为今天
+            var today = new Date().toISOString().split('T')[0];
+            $('input[name="stockOutDate"]').val(today);
+
+            // 添加产品行
+            $('#addProductRow').click(function() {
+                var rowCount = $('.product-row').length;
+                var newRow = `
+                    <tr class="product-row">
+                        <td>${rowCount + 1}</td>
+                        <td>
+                            <select name="productId[]" lay-verify="required" class="product-select">
+                                <option value="">请选择产品</option>
+                                <option value="1">水润保湿精华液</option>
+                                <option value="2">丝绒哑光口红</option>
+                                <option value="3">修护洗发水</option>
+                                <option value="4">男士古龙香水</option>
+                                <option value="5">焕白面膜</option>
+                            </select>
+                        </td>
+                        <td class="specification">-</td>
+                        <td class="current-stock">-</td>
+                        <td>
+                            <input type="text" name="unit[]" class="layui-input" value="瓶">
+                        </td>
+                        <td>
+                            <input type="number" name="quantity[]" lay-verify="required|number|min:1" 
+                                class="layui-input" value="1">
+                            <div class="stock-warning">警告：出库数量超过当前库存！</div>
+                        </td>
+                        <td>
+                            <input type="number" name="price[]" lay-verify="required|number|min:0" 
+                                class="layui-input" step="0.01" value="0.00">
+                        </td>
+                        <td>
+                            <button type="button" class="layui-btn layui-btn-danger layui-btn-xs remove-row">
+                                <i class="fa fa-minus"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                $('#productTableBody').append(newRow);
+                form.render('select');
+                
+                // 更新删除按钮状态
+                updateRemoveButtonStatus();
+            });
+
+            // 移除产品行
+            $(document).on('click', '.remove-row', function() {
+                $(this).closest('.product-row').remove();
+                
+                // 更新序号
+                $('.product-row').each(function(index) {
+                    $(this).find('td:first').text(index + 1);
+                });
+                
+                // 更新删除按钮状态
+                updateRemoveButtonStatus();
+            });
+
+            // 更新删除按钮状态
+            function updateRemoveButtonStatus() {
+                var rowCount = $('.product-row').length;
+                if (rowCount <= 1) {
+                    $('.remove-row').attr('disabled', 'disabled');
+                } else {
+                    $('.remove-row').removeAttr('disabled');
+                }
+            }
+
+            // 选择产品时更新规格和库存
+            $(document).on('change', '.product-select', function() {
+                var productId = $(this).val();
+                var row = $(this).closest('tr');
+                var specCell = row.find('.specification');
+                var stockCell = row.find('.current-stock');
+                var quantityInput = row.find('input[name="quantity[]"]');
+                
+                if (productId) {
+                    var product = products.find(p => p.id == productId);
+                    if (product) {
+                        specCell.text(product.spec);
+                        stockCell.text(product.stock);
+                        
+                        // 检查数量是否超过库存
+                        checkStockQuantity(quantityInput, product.stock);
+                    }
+                } else {
+                    specCell.text('-');
+                    stockCell.text('-');
+                    row.find('.stock-warning').removeClass('show');
+                }
+            });
+
+            // 检查出库数量是否超过库存
+            $(document).on('input', 'input[name="quantity[]"]', function() {
+                var quantity = parseInt($(this).val()) || 0;
+                var row = $(this).closest('tr');
+                var stock = parseInt(row.find('.current-stock').text()) || 0;
+                
+                checkStockQuantity($(this), stock);
+            });
+
+            // 检查库存与出库数量
+            function checkStockQuantity(inputElem, stock) {
+                var quantity = parseInt(inputElem.val()) || 0;
+                var warningElem = inputElem.next('.stock-warning');
+                
+                if (stock > 0 && quantity > stock) {
+                    warningElem.addClass('show');
+                } else {
+                    warningElem.removeClass('show');
+                }
+            }
+
+            // 提交出库单
+            form.on('submit(submitStockOut)', function(data) {
+                // 验证是否至少有一个产品
+                if ($('.product-row').length === 0) {
+                    layer.msg('请至少添加一个产品', {icon: 2});
+                    return false;
+                }
+                
+                // 检查是否有库存不足的情况
+                var hasStockIssue = false;
+                $('.stock-warning.show').each(function() {
+                    hasStockIssue = true;
+                    return false;
+                });
+                
+                if (hasStockIssue) {
+                    layer.confirm('部分产品出库数量超过当前库存，是否仍要提交审核？', {
+                        icon: 3,
+                        title: '库存警告'
+                    }, function(index) {
+                        layer.close(index);
+                        submitFormData();
+                    });
+                    return false;
+                }
+
+                // 提交表单
+                submitFormData();
+                return false;
+            });
+
+            // 提交表单数据
+            function submitFormData() {
+                // 模拟提交
+                var index = layer.load(2);
+                setTimeout(function() {
+                    layer.close(index);
+                    layer.msg('出库单已提交审核', {icon: 1, time: 1500}, function() {
+                        // 重置表单
+                        $('#stockOutNo').val(generateStockOutNo());
+                        $('input[name="stockOutDate"]').val(today);
+                        // 保留一行产品
+                        $('#productTableBody').html($('#productTableBody tr:first').clone());
+                        form.render();
+                        updateRemoveButtonStatus();
+                        
+                        // 切换到待审核标签页
+                        element.tabChange('stockTab', 'pending');
+                        // 刷新待审核列表
+                        renderPendingList();
+                    });
+                }, 1000);
+            }
+
+            // 模拟待审核数据
+            var pendingData = [
+                {
+                    id: 1,
+                    stockOutNo: "CK202310150001",
+                    stockOutDate: "2023-10-15",
+                    type: "销售出库",
+                    recipient: "某美妆连锁店",
+                    productCount: 2,
+                    operator: "张三",
+                    submitTime: "2023-10-15 10:20:35",
+                    products: [
+                        {name: "水润保湿精华液", spec: "50ml", quantity: 5, price: 128.00, stock: 25},
+                        {name: "焕白面膜", spec: "10片装", quantity: 10, price: 89.00, stock: 42}
+                    ]
+                },
+                {
+                    id: 2,
+                    stockOutNo: "CK202310140002",
+                    stockOutDate: "2023-10-14",
+                    type: "样品领用",
+                    recipient: "市场部-李四",
+                    productCount: 3,
+                    operator: "王五",
+                    submitTime: "2023-10-14 15:40:22",
+                    products: [
+                        {name: "丝绒哑光口红", spec: "3.5g", quantity: 2, price: 68.00, stock: 36},
+                        {name: "男士古龙香水", spec: "100ml", quantity: 1, price: 238.00, stock: 15},
+                        {name: "修护洗发水", spec: "300ml", quantity: 1, price: 78.00, stock: 8}
+                    ]
+                },
+                {
+                    id: 3,
+                    stockOutNo: "CK202310140001",
+                    stockOutDate: "2023-10-14",
+                    type: "报损出库",
+                    recipient: "仓库管理",
+                    productCount: 1,
+                    operator: "赵六",
+                    submitTime: "2023-10-14 09:15:10",
+                    products: [
+                        {name: "修护洗发水", spec: "300ml", quantity: 2, price: 78.00, stock: 8}
+                    ]
+                }
+            ];
+
+            // 模拟历史数据
+            var historyData = [
+                {
+                    id: 4,
+                    stockOutNo: "CK202310130003",
+                    stockOutDate: "2023-10-13",
+                    type: "销售出库",
+                    recipient: "某电商平台",
+                    productCount: 2,
+                    totalAmount: 1670.00,
+                    status: "approved",
+                    statusText: "已通过",
+                    auditor: "钱七",
+                    auditTime: "2023-10-13 14:30:25"
+                },
+                {
+                    id: 5,
+                    stockOutNo: "CK202310130002",
+                    stockOutDate: "2023-10-13",
+                    type: "退货出库",
+                    recipient: "XX化妆品有限公司",
+                    productCount: 1,
+                    totalAmount: 680.00,
+                    status: "approved",
+                    statusText: "已通过",
+                    auditor: "钱七",
+                    auditTime: "2023-10-13 11:15:40"
+                },
+                {
+                    id: 6,
+                    stockOutNo: "CK202310120001",
+                    stockOutDate: "2023-10-12",
+                    type: "调拨出库",
+                    recipient: "分店B",
+                    productCount: 3,
+                    totalAmount: 2150.00,
+                    status: "rejected",
+                    statusText: "已拒绝",
+                    auditor: "孙八",
+                    auditTime: "2023-10-12 16:50:10"
+                }
+            ];
+
+            // 渲染待审核列表
+            function renderPendingList() {
+                var html = '';
+                pendingData.forEach(item => {
+                    html += `<tr>
+                        <td><input type="checkbox" lay-skin="primary" data-id="${item.id}"></td>
+                        <td>${item.stockOutNo}</td>
+                        <td>${item.stockOutDate}</td>
+                        <td>${item.type}</td>
+                        <td>${item.recipient}</td>
+                        <td>${item.productCount}</td>
+                        <td>${item.operator}</td>
+                        <td>${item.submitTime}</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operate-btn" onclick="viewDetail(${item.id}, 'pending')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                            <button class="layui-btn layui-btn-normal layui-btn-xs operate-btn" onclick="showAuditModal(${item.id}, '${item.stockOutNo}')">
+                                <i class="fa fa-gavel"></i> 审核
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                $('#pendingTableBody').html(html);
+                form.render('checkbox');
+                
+                // 渲染分页
+                renderPendingPagination();
+            }
+
+            // 渲染待审核分页
+            function renderPendingPagination() {
+                laypage.render({
+                    elem: 'pendingPagination',
+                    count: pendingData.length,
+                    limit: 10,
+                    curr: 1,
+                    layout: ['prev', 'page', 'next', 'count']
+                });
+            }
+
+            // 渲染历史列表
+            function renderHistoryList() {
+                var html = '';
+                historyData.forEach(item => {
+                    var statusClass = '';
+                    switch(item.status) {
+                        case 'pending':
+                            statusClass = 'status-pending';
+                            break;
+                        case 'approved':
+                            statusClass = 'status-approved';
+                            break;
+                        case 'rejected':
+                            statusClass = 'status-rejected';
+                            break;
+                    }
+                    
+                    html += `<tr>
+                        <td>${item.stockOutNo}</td>
+                        <td>${item.stockOutDate}</td>
+                        <td>${item.type}</td>
+                        <td>${item.recipient}</td>
+                        <td>${item.productCount}</td>
+                        <td>${item.totalAmount.toFixed(2)}</td>
+                        <td><span class="status-tag ${statusClass}">${item.statusText}</span></td>
+                        <td>${item.auditor}</td>
+                        <td>${item.auditTime}</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operate-btn" onclick="viewDetail(${item.id}, 'history')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                $('#historyTableBody').html(html);
+                
+                // 渲染分页
+                renderHistoryPagination();
+            }
+
+            // 渲染历史分页
+            function renderHistoryPagination() {
+                laypage.render({
+                    elem: 'historyPagination',
+                    count: historyData.length,
+                    limit: 10,
+                    curr: 1,
+                    layout: ['prev', 'page', 'next', 'count']
+                });
+            }
+
+            // 刷新待审核列表
+            $('#refreshPending').click(function() {
+                var index = layer.load(1);
+                setTimeout(function() {
+                    renderPendingList();
+                    layer.close(index);
+                    layer.msg('已刷新', {icon: 1, time: 1000});
+                }, 500);
+            });
+
+            // 搜索待审核
+            $('#searchPending').click(function() {
+                var keyword = $('#pendingSearch').val().toLowerCase();
+                // 实际项目中这里应该根据关键词筛选数据
+                layer.msg('搜索: ' + keyword, {icon: 1});
+            });
+
+            // 搜索历史
+            $('#searchHistory').click(function() {
+                var keyword = $('#historySearch').val().toLowerCase();
+                var status = $('#historyStatus').val();
+                // 实际项目中这里应该根据关键词和状态筛选数据
+                layer.msg('搜索: ' + keyword + ', 状态: ' + status, {icon: 1});
+            });
+
+            // 全选待审核
+            form.on('checkbox(checkAllPending)', function(data) {
+                var checked = data.elem.checked;
+                $('#pendingTableBody [type="checkbox"]').prop('checked', checked);
+                form.render('checkbox');
+            });
+
+            // 显示审核弹窗
+            window.showAuditModal = function(id, stockOutNo) {
+                $('#auditStockOutId').val(id);
+                $('#auditStockOutNo').val(stockOutNo);
+                $('#auditModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+                form.render('radio');
+            };
+
+            // 关闭审核弹窗
+            $('#cancelAudit').click(function() {
+                $('#auditModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 提交审核
+            form.on('submit(submitAudit)', function(data) {
+                var stockOutId = parseInt($('#auditStockOutId').val());
+                var result = data.field.auditResult;
+                var opinion = data.field.auditOpinion;
+                var auditor = data.field.auditor;
+                
+                // 模拟审核操作
+                var index = layer.load(2);
+                setTimeout(function() {
+                    layer.close(index);
+                    $('#auditModal').hide();
+                    $('.layui-modal-shade').remove();
+                    
+                    // 从待审核列表移除并添加到历史列表
+                    var itemIndex = pendingData.findIndex(item => item.id === stockOutId);
+                    if (itemIndex !== -1) {
+                        var item = pendingData.splice(itemIndex, 1)[0];
+                        
+                        // 计算总金额
+                        var totalAmount = 0;
+                        item.products.forEach(p => {
+                            totalAmount += p.quantity * p.price;
+                        });
+                        
+                        // 如果审核通过，更新库存
+                        if (result === 'approved') {
+                            item.products.forEach(p => {
+                                var prodIndex = products.findIndex(pr => pr.name === p.name);
+                                if (prodIndex !== -1) {
+                                    products[prodIndex].stock = Math.max(0, products[prodIndex].stock - p.quantity);
+                                }
+                            });
+                        }
+                        
+                        // 添加到历史数据
+                        historyData.unshift({
+                            id: item.id,
+                            stockOutNo: item.stockOutNo,
+                            stockOutDate: item.stockOutDate,
+                            type: item.type,
+                            recipient: item.recipient,
+                            productCount: item.productCount,
+                            totalAmount: totalAmount,
+                            status: result,
+                            statusText: result === 'approved' ? '已通过' : '已拒绝',
+                            auditor: auditor,
+                            auditTime: new Date().toLocaleString()
+                        });
+                        
+                        // 刷新列表
+                        renderPendingList();
+                        renderHistoryList();
+                        
+                        layer.msg(`审核${result === 'approved' ? '通过' : '拒绝'}成功`, {
+                            icon: 1,
+                            time: 1500
+                        });
+                    }
+                }, 1000);
+                
+                return false;
+            });
+
+            // 查看详情
+            window.viewDetail = function(id, type) {
+                var item = null;
+                if (type === 'pending') {
+                    item = pendingData.find(item => item.id === id);
+                } else if (type === 'history') {
+                    item = historyData.find(item => item.id === id);
+                }
+                
+                if (!item) return;
+                
+                var html = `
+                    <div style="margin-bottom: 15px;">
+                        <p><strong>出库单号：</strong>${item.stockOutNo}</p>
+                        <p><strong>出库日期：</strong>${item.stockOutDate}</p>
+                        <p><strong>出库类型：</strong>${item.type}</p>
+                        <p><strong>领用信息：</strong>${item.recipient}</p>
+                        <p><strong>出库人员：</strong>${item.operator || '未知'}</p>
+                `;
+                
+                if (type === 'pending') {
+                    html += `<p><strong>提交时间：</strong>${item.submitTime}</p>`;
+                } else {
+                    var statusClass = '';
+                    switch(item.status) {
+                        case 'pending':
+                            statusClass = 'status-pending';
+                            break;
+                        case 'approved':
+                            statusClass = 'status-approved';
+                            break;
+                        case 'rejected':
+                            statusClass = 'status-rejected';
+                            break;
+                    }
+                    html += `
+                        <p><strong>审核状态：</strong><span class="status-tag ${statusClass}">${item.statusText}</span></p>
+                        <p><strong>审核人：</strong>${item.auditor}</p>
+                        <p><strong>审核时间：</strong>${item.auditTime}</p>
+                        <p><strong>总金额：</strong>${item.totalAmount.toFixed(2)}元</p>
+                    `;
+                }
+                
+                html += `</div>
+                <div style="margin-top: 20px;">
+                    <strong>出库产品列表：</strong>
+                    <table class="layui-table" lay-size="sm" style="margin-top: 10px;">
+                        <thead>
+                            <tr>
+                                <th>产品名称</th>
+                                <th>规格</th>
+                                <th>${type === 'pending' ? '当前库存' : ''}</th>
+                                <th>数量</th>
+                                <th>单价(元)</th>
+                                <th>小计(元)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                if (type === 'pending' && item.products) {
+                    item.products.forEach(p => {
+                        var subtotal = p.quantity * p.price;
+                        html += `
+                            <tr>
+                                <td>${p.name}</td>
+                                <td>${p.spec}</td>
+                                <td>${p.stock}</td>
+                                <td>${p.quantity}</td>
+                                <td>${p.price.toFixed(2)}</td>
+                                <td>${subtotal.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                } else if (type === 'history') {
+                    // 简化历史产品展示
+                    html += `
+                        <tr>
+                            <td colspan="5">产品详情略（共${item.productCount}种产品）</td>
+                        </tr>
+                    `;
+                }
+                
+                html += `
+                        </tbody>
+                    </table>
+                </div>
+                `;
+                
+                $('#detailContent').html(html);
+                $('#detailModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 关闭详情弹窗
+            $('#closeDetail').click(function() {
+                $('#detailModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 标签切换事件
+            element.on('tab(stockTab)', function(data) {
+                var layId = $(this).attr('lay-id');
+                if (layId === 'pending' && $('#pendingTableBody tr').length === 0) {
+                    renderPendingList();
+                } else if (layId === 'history' && $('#historyTableBody tr').length === 0) {
+                    renderHistoryList();
+                }
+            });
+
+            // 初始化表单渲染
+            form.render();
+        });
+    </script>
+</body>
+</html>

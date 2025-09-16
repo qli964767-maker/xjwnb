@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>库存数量统计报表</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        body { background: #f5f5f5; padding: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .stat-card { background: #fff; border-radius: 4px; padding: 12px; text-align: center; margin-bottom: 15px; }
+        .stat-value { font-size: 22px; font-weight: bold; margin: 5px 0; }
+        .stat-label { color: #666; font-size: 13px; }
+        .filter-bar { background: #fff; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        .table-wrapper { background: #fff; border-radius: 4px; overflow: hidden; }
+        .table-header { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+    <!-- 页面头部 -->
+    <div class="header">
+        <h2 style="margin: 0; font-size: 16px;"><i class="fa fa-cubes" style="color: #2196F3;"></i> 库存数量统计报表</h2>
+        <div>
+            <button class="layui-btn layui-btn-sm" id="exportBtn"><i class="fa fa-download"></i> 导出</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="refreshBtn"><i class="fa fa-refresh"></i> 刷新</button>
+        </div>
+    </div>
+
+    <!-- 核心统计数据 -->
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: #2196F3;">2,486</div>
+                <div class="stat-label">总库存数量</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: #4CAF50;">186</div>
+                <div class="stat-label">库存商品种类</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: #FF9800;">24</div>
+                <div class="stat-label">低库存商品</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: #F44336;">8</div>
+                <div class="stat-label">零库存商品</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选条件 -->
+    <div class="filter-bar layui-form">
+        <div class="layui-row">
+            <div class="layui-col-md2">
+                <select name="category" class="layui-select layui-select-sm">
+                    <option value="">全部分类</option>
+                    <option value="electronics">电子产品</option>
+                    <option value="clothing">服装鞋帽</option>
+                    <option value="food">食品饮料</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="warehouse" class="layui-select layui-select-sm">
+                    <option value="">全部仓库</option>
+                    <option value="main">主仓库</option>
+                    <option value="east">东部仓库</option>
+                    <option value="west">西部仓库</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="status" class="layui-select layui-select-sm">
+                    <option value="">全部状态</option>
+                    <option value="normal">正常库存</option>
+                    <option value="low">低库存</option>
+                    <option value="zero">零库存</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="dateRange" class="layui-select layui-select-sm">
+                    <option value="today">今日</option>
+                    <option value="week" selected>本周</option>
+                    <option value="month">本月</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <button class="layui-btn layui-btn-sm">查询</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表分析 -->
+    <div class="layui-row layui-col-space10" style="margin-bottom: 15px;">
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header" style="font-size: 14px;">分类库存占比</div>
+                <div class="layui-card-body" style="padding: 10px; height: 250px;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header" style="font-size: 14px;">库存趋势</div>
+                <div class="layui-card-body" style="padding: 10px; height: 250px;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库存明细表格 -->
+    <div class="table-wrapper">
+        <div class="table-header">
+            <div style="font-weight: 500;">库存数量明细</div>
+            <div>
+                <input type="text" placeholder="搜索商品" class="layui-input layui-input-sm" style="width: 200px; display: inline-block;">
+                <button class="layui-btn layui-btn-sm">搜索</button>
+            </div>
+        </div>
+        <table class="layui-table" lay-size="sm" style="margin: 0;">
+            <thead>
+                <tr>
+                    <th>商品编码</th>
+                    <th>商品名称</th>
+                    <th>分类</th>
+                    <th>规格</th>
+                    <th>仓库</th>
+                    <th>库存数量</th>
+                    <th>库存状态</th>
+                    <th>更新时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>SP001</td>
+                    <td>智能手机A1</td>
+                    <td>电子产品</td>
+                    <td>64GB</td>
+                    <td>主仓库</td>
+                    <td>45</td>
+                    <td><span style="color:#4CAF50">正常</span></td>
+                    <td>2024-05-20</td>
+                </tr>
+                <tr>
+                    <td>SP002</td>
+                    <td>休闲T恤</td>
+                    <td>服装鞋帽</td>
+                    <td>M码</td>
+                    <td>东部仓库</td>
+                    <td>8</td>
+                    <td><span style="color:#FF9800">低库存</span></td>
+                    <td>2024-05-20</td>
+                </tr>
+                <tr>
+                    <td>SP003</td>
+                    <td>矿泉水</td>
+                    <td>食品饮料</td>
+                    <td>500ml</td>
+                    <td>西部仓库</td>
+                    <td>120</td>
+                    <td><span style="color:#4CAF50">正常</span></td>
+                    <td>2024-05-19</td>
+                </tr>
+                <tr>
+                    <td>SP004</td>
+                    <td>无线耳机</td>
+                    <td>电子产品</td>
+                    <td>白色</td>
+                    <td>主仓库</td>
+                    <td>0</td>
+                    <td><span style="color:#F44336">零库存</span></td>
+                    <td>2024-05-18</td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="padding: 10px; text-align: right; border-top: 1px solid #eee;">
+            <div class="layui-laypage layui-laypage-default">
+                <span class="layui-laypage-count">共 186 条</span>
+                <a href="#" class="layui-laypage-prev">上一页</a>
+                <span class="layui-laypage-curr"><em>1</em></span>
+                <a href="#">2</a>
+                <a href="#">3</a>
+                <a href="#" class="layui-laypage-next">下一页</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer'], function() {
+            var form = layui.form,
+                layer = layui.layer;
+            
+            // 初始化图表
+            initCharts();
+            
+            // 初始化图表
+            function initCharts() {
+                // 分类库存占比
+                new Chart(document.getElementById('categoryChart'), {
+                    type: 'pie',
+                    data: {
+                        labels: ['电子产品', '服装鞋帽', '食品饮料', '其他'],
+                        datasets: [{
+                            data: [45, 30, 20, 5],
+                            backgroundColor: ['#2196F3', '#FF9800', '#4CAF50', '#9E9E9E']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' }
+                        }
+                    }
+                });
+                
+                // 库存趋势图
+                new Chart(document.getElementById('trendChart'), {
+                    type: 'line',
+                    data: {
+                        labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                        datasets: [{
+                            label: '总库存数量',
+                            data: [2450, 2430, 2480, 2460, 2490, 2480, 2486],
+                            borderColor: '#2196F3',
+                            tension: 0.3,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: false }
+                        }
+                    }
+                });
+            }
+            
+            // 导出报表
+            $('#exportBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('报表导出成功', {icon: 1});
+                }, 800);
+            });
+            
+            // 刷新数据
+            $('#refreshBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('数据已更新', {icon: 1});
+                }, 600);
+            });
+        });
+    </script>
+</body>
+</html>
+    

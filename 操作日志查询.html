@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>操作日志查询</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body { background: #f5f5f5; padding: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .filter-panel { background: #fff; border-radius: 4px; padding: 15px; margin-bottom: 15px; }
+        .log-table { background: #fff; border-radius: 4px; overflow: hidden; }
+        .table-header { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .table-title { font-weight: 500; }
+        .log-status { padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+        .status-success { background: #e8f5e9; color: #43a047; }
+        .status-fail { background: #ffebee; color: #e53935; }
+        .operation-group { display: flex; gap: 10px; }
+        .log-detail { margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 13px; }
+        .detail-title { font-weight: 500; margin-bottom: 5px; }
+        .params-item { margin-bottom: 3px; }
+        .params-key { display: inline-block; width: 100px; color: #666; }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="header">
+        <h2 style="margin: 0; font-size: 16px;"><i class="fa fa-list-alt" style="color: #2196F3;"></i> 操作日志查询</h2>
+        <div class="operation-group">
+            <button class="layui-btn layui-btn-sm" id="exportBtn"><i class="fa fa-download"></i> 导出日志</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="refreshBtn"><i class="fa fa-refresh"></i> 刷新</button>
+        </div>
+    </div>
+
+    <!-- 筛选条件 -->
+    <div class="filter-panel layui-form">
+        <div class="layui-form-item">
+            <div class="layui-row">
+                <div class="layui-col-md3">
+                    <label class="layui-form-label">操作人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="operator" placeholder="请输入操作人用户名" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-col-md3">
+                    <label class="layui-form-label">操作模块</label>
+                    <div class="layui-input-block">
+                        <select name="module">
+                            <option value="">全部模块</option>
+                            <option value="user">用户管理</option>
+                            <option value="role">角色管理</option>
+                            <option value="inventory">库存管理</option>
+                            <option value="inout">出入库管理</option>
+                            <option value="report">报表管理</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-col-md3">
+                    <label class="layui-form-label">操作类型</label>
+                    <div class="layui-input-block">
+                        <select name="operation">
+                            <option value="">全部操作</option>
+                            <option value="view">查看</option>
+                            <option value="add">新增</option>
+                            <option value="edit">编辑</option>
+                            <option value="delete">删除</option>
+                            <option value="export">导出</option>
+                            <option value="login">登录</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-col-md3">
+                    <label class="layui-form-label">操作状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="">全部状态</option>
+                            <option value="success">成功</option>
+                            <option value="fail">失败</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="layui-form-item">
+            <div class="layui-row">
+                <div class="layui-col-md6">
+                    <label class="layui-form-label">操作时间</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="dateRange" placeholder="请选择日期范围" class="layui-input" id="dateRange">
+                    </div>
+                </div>
+                <div class="layui-col-md3">
+                    <label class="layui-form-label">IP地址</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="ip" placeholder="请输入IP地址" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-col-md3">
+                    <div class="layui-input-block" style="margin-top: 25px;">
+                        <button class="layui-btn" lay-submit lay-filter="searchLog"><i class="fa fa-search"></i> 查询</button>
+                        <button type="reset" class="layui-btn layui-btn-primary"><i class="fa fa-refresh"></i> 重置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日志列表 -->
+    <div class="log-table">
+        <div class="table-header">
+            <div class="table-title">操作日志列表</div>
+            <div>共 <span style="color: #2196F3;">1,286</span> 条记录</div>
+        </div>
+        <table class="layui-table" lay-size="sm" style="margin: 0;">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th>操作人</th>
+                    <th>操作模块</th>
+                    <th>操作类型</th>
+                    <th>操作内容</th>
+                    <th>IP地址</th>
+                    <th>操作时间</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1286</td>
+                    <td>admin</td>
+                    <td>用户管理</td>
+                    <td>新增</td>
+                    <td>创建了新用户"testuser"</td>
+                    <td>192.168.1.100</td>
+                    <td>2024-05-20 15:30:22</td>
+                    <td><span class="log-status status-success">成功</span></td>
+                    <td>
+                        <button class="layui-btn layui-btn-xs layui-btn-primary view-detail" data-id="1286"><i class="fa fa-eye"></i> 详情</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>1285</td>
+                    <td>stock_manager</td>
+                    <td>库存管理</td>
+                    <td>编辑</td>
+                    <td>更新了商品"无线耳机"的库存数量</td>
+                    <td>192.168.1.105</td>
+                    <td>2024-05-20 14:15:36</td>
+                    <td><span class="log-status status-success">成功</span></td>
+                    <td>
+                        <button class="layui-btn layui-btn-xs layui-btn-primary view-detail" data-id="1285"><i class="fa fa-eye"></i> 详情</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>1284</td>
+                    <td>warehouse_keeper</td>
+                    <td>出入库管理</td>
+                    <td>新增</td>
+                    <td>创建了入库单"IN2024052001"</td>
+                    <td>192.168.1.110</td>
+                    <td>2024-05-20 11:08:45</td>
+                    <td><span class="log-status status-success">成功</span></td>
+                    <td>
+                        <button class="layui-btn layui-btn-xs layui-btn-primary view-detail" data-id="1284"><i class="fa fa-eye"></i> 详情</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>1283</td>
+                    <td>unknown</td>
+                    <td>系统管理</td>
+                    <td>登录</td>
+                    <td>用户登录系统</td>
+                    <td>203.0.113.45</td>
+                    <td>2024-05-20 10:22:18</td>
+                    <td><span class="log-status status-fail">失败</span></td>
+                    <td>
+                        <button class="layui-btn layui-btn-xs layui-btn-primary view-detail" data-id="1283"><i class="fa fa-eye"></i> 详情</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>1282</td>
+                    <td>admin</td>
+                    <td>角色管理</td>
+                    <td>编辑</td>
+                    <td>修改了角色"采购专员"的权限配置</td>
+                    <td>192.168.1.100</td>
+                    <td>2024-05-19 16:45:52</td>
+                    <td><span class="log-status status-success">成功</span></td>
+                    <td>
+                        <button class="layui-btn layui-btn-xs layui-btn-primary view-detail" data-id="1282"><i class="fa fa-eye"></i> 详情</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- 分页 -->
+        <div style="padding: 12px; text-align: right; border-top: 1px solid #eee;">
+            <div class="layui-laypage layui-laypage-default">
+                <span class="layui-laypage-count">共 1286 条</span>
+                <a href="#" class="layui-laypage-prev">上一页</a>
+                <span class="layui-laypage-curr"><em>1</em></span>
+                <a href="#">2</a>
+                <a href="#">3</a>
+                <a href="#">4</a>
+                <a href="#">5</a>
+                <span>...</span>
+                <a href="#">65</a>
+                <a href="#" class="layui-laypage-next">下一页</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日志详情弹窗 -->
+    <div id="logDetailModal" style="display: none; padding: 15px;">
+        <div class="detail-title">操作日志详情</div>
+        <div class="log-detail">
+            <div class="params-item">
+                <span class="params-key">日志ID：</span>
+                <span id="detailId">1286</span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">操作人：</span>
+                <span id="detailOperator">admin</span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">用户ID：</span>
+                <span id="detailUserId">1</span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">操作模块：</span>
+                <span id="detailModule">用户管理</span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">操作类型：</span>
+                <span id="detailOperation">新增</span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">操作内容：</span>
+                <span id="detailContent">创建了新用户"testuser"</span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">IP地址：</span>
+                <span id="detailIp">192.168.1.100</span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">操作时间：</span>
+                <span id="detailTime">2024-05-20 15:30:22</span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">状态：</span>
+                <span id="detailStatus"><span class="log-status status-success">成功</span></span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">User-Agent：</span>
+                <span id="detailAgent">Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36</span>
+            </div>
+            <div class="params-item">
+                <span class="params-key">操作参数：</span>
+                <pre id="detailParams" style="display: inline-block; font-size: 12px; background: #f0f0f0; padding: 5px; border-radius: 3px; max-width: 400px; white-space: pre-wrap;">{
+  "username": "testuser",
+  "realName": "测试用户",
+  "password": "******",
+  "phone": "13800138000",
+  "email": "test@example.com",
+  "roleId": 5,
+  "status": 1
+}</pre>
+            </div>
+            <div class="params-item">
+                <span class="params-key">返回结果：</span>
+                <pre id="detailResult" style="display: inline-block; font-size: 12px; background: #f0f0f0; padding: 5px; border-radius: 3px; max-width: 400px; white-space: pre-wrap;">{
+  "code": 0,
+  "msg": "用户创建成功",
+  "data": {
+    "userId": 43
+  }
+}</pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laydate'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laydate = layui.laydate;
+            
+            // 日期范围选择
+            laydate.render({
+                elem: '#dateRange',
+                range: true,
+                value: getRecent7Days()
+            });
+            
+            // 获取最近7天日期范围
+            function getRecent7Days() {
+                var end = new Date();
+                var start = new Date();
+                start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
+                
+                return formatDate(start) + ' - ' + formatDate(end);
+            }
+            
+            // 格式化日期
+            function formatDate(date) {
+                var year = date.getFullYear();
+                var month = (date.getMonth() + 1).toString().padStart(2, '0');
+                var day = date.getDate().toString().padStart(2, '0');
+                return year + '-' + month + '-' + day;
+            }
+            
+            // 搜索日志
+            form.on('submit(searchLog)', function(data) {
+                // 模拟搜索操作
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('日志搜索完成', {icon: 1});
+                }, 800);
+                return false;
+            });
+            
+            // 查看日志详情
+            $(document).on('click', '.view-detail', function() {
+                var logId = $(this).data('id');
+                
+                // 模拟加载日志详情
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    
+                    // 打开详情弹窗
+                    layer.open({
+                        type: 1,
+                        title: '日志详情',
+                        area: ['700px', '500px'],
+                        content: $('#logDetailModal'),
+                        maxmin: true
+                    });
+                }, 500);
+            });
+            
+            // 导出日志
+            $('#exportBtn').click(function() {
+                // 模拟导出操作
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('日志导出成功', {icon: 1});
+                }, 1200);
+            });
+            
+            // 刷新日志
+            $('#refreshBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('日志已刷新', {icon: 1});
+                }, 600);
+            });
+            
+            // 初始化渲染
+            form.render();
+        });
+    </script>
+</body>
+</html>
+    

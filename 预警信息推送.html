@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>预警信息推送系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body { background: #f5f5f5; padding: 15px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .stat-item { padding: 10px; margin-bottom: 15px; border-radius: 4px; background: #fff; }
+        .stat-title { font-size: 14px; color: #666; margin-bottom: 5px; }
+        .stat-value { font-size: 20px; font-weight: bold; }
+        
+        .alert-item { padding: 12px; border-radius: 4px; background: #fff; margin-bottom: 10px; border-left: 3px solid #FF9800; }
+        .alert-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .alert-title { font-weight: 500; }
+        .alert-time { font-size: 12px; color: #666; }
+        .alert-content { font-size: 13px; color: #333; margin-bottom: 8px; }
+        .alert-actions { text-align: right; }
+        
+        .channel-tag { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 12px; margin-right: 5px; }
+        .channel-sms { background: #e3f2fd; color: #1976d2; }
+        .channel-email { background: #e8f5e9; color: #2e7d32; }
+        .channel-app { background: #fff3e0; color: #ef6c00; }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="page-header">
+        <h2 style="font-size: 16px; margin: 0;"><i class="fa fa-bell" style="color: #FF9800;"></i> 预警信息推送</h2>
+        <button class="layui-btn layui-btn-sm" id="settingsBtn"><i class="fa fa-cog"></i> 推送设置</button>
+    </div>
+
+    <!-- 统计概览 -->
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md3">
+            <div class="stat-item">
+                <div class="stat-title">今日预警总数</div>
+                <div class="stat-value" style="color: #F44336;">28</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="stat-item">
+                <div class="stat-title">未读预警数</div>
+                <div class="stat-value" style="color: #FF9800;">12</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="stat-item">
+                <div class="stat-title">已处理预警数</div>
+                <div class="stat-value" style="color: #4CAF50;">16</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="stat-item">
+                <div class="stat-title">推送成功率</div>
+                <div class="stat-value" style="color: #2196F3;">98.5%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 预警列表与设置 -->
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md8">
+            <div class="layui-card">
+                <div class="layui-card-header" style="font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>最近预警信息</span>
+                    <div class="layui-form" style="margin: 0;">
+                        <div class="layui-input-inline" style="width: 120px;">
+                            <select name="alertType" class="layui-select layui-select-sm">
+                                <option value="">全部类型</option>
+                                <option value="stock">库存不足</option>
+                                <option value="overstock">库存积压</option>
+                                <option value="expire">临期产品</option>
+                            </select>
+                        </div>
+                        <button class="layui-btn layui-btn-sm"><i class="fa fa-search"></i> 查</button>
+                    </div>
+                </div>
+                <div class="layui-card-body" style="padding: 10px;">
+                    <!-- 预警信息1 -->
+                    <div class="alert-item">
+                        <div class="alert-header">
+                            <div class="alert-title">库存不足预警</div>
+                            <div class="alert-time">10:25</div>
+                        </div>
+                        <div class="alert-content">丝绒哑光口红（#正红色）库存仅剩8件，低于阈值15件，请及时补货。</div>
+                        <div>
+                            <span class="channel-tag channel-sms">短信</span>
+                            <span class="channel-tag channel-app">APP推送</span>
+                            <span style="font-size: 12px; color: #666;">接收人：张经理、采购组</span>
+                        </div>
+                        <div class="alert-actions">
+                            <button class="layui-btn layui-btn-xs layui-btn-primary">标记已读</button>
+                            <button class="layui-btn layui-btn-xs">处理</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 预警信息2 -->
+                    <div class="alert-item">
+                        <div class="alert-header">
+                            <div class="alert-title">临期产品预警</div>
+                            <div class="alert-time">09:18</div>
+                        </div>
+                        <div class="alert-content">保湿补水面膜将在6天后过期，当前库存32件，请及时处理。</div>
+                        <div>
+                            <span class="channel-tag channel-email">邮件</span>
+                            <span class="channel-tag channel-app">APP推送</span>
+                            <span style="font-size: 12px; color: #666;">接收人：李主管、销售组</span>
+                        </div>
+                        <div class="alert-actions">
+                            <button class="layui-btn layui-btn-xs layui-btn-primary">标记已读</button>
+                            <button class="layui-btn layui-btn-xs">处理</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 预警信息3 -->
+                    <div class="alert-item">
+                        <div class="alert-header">
+                            <div class="alert-title">库存积压预警</div>
+                            <div class="alert-time">08:42</div>
+                        </div>
+                        <div class="alert-content">复古台灯库存120件，30天仅销售5件，周转天数达720天，存在严重积压风险。</div>
+                        <div>
+                            <span class="channel-tag channel-sms">短信</span>
+                            <span class="channel-tag channel-email">邮件</span>
+                            <span style="font-size: 12px; color: #666;">接收人：王总监、库存组</span>
+                        </div>
+                        <div class="alert-actions">
+                            <button class="layui-btn layui-btn-xs layui-btn-primary">标记已读</button>
+                            <button class="layui-btn layui-btn-xs">处理</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header" style="font-size: 14px;">推送渠道统计</div>
+                <div class="layui-card-body" style="padding: 10px; height: 220px;">
+                    <canvas id="channelChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="layui-card" style="margin-top: 10px;">
+                <div class="layui-card-header" style="font-size: 14px;">预警类型分布</div>
+                <div class="layui-card-body" style="padding: 10px; height: 220px;">
+                    <canvas id="typeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 推送设置弹窗 -->
+    <div class="layui-modal" id="settingsModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title" style="font-size: 14px;">预警推送设置</div>
+        <div class="layui-modal-body" style="padding: 15px;">
+            <form class="layui-form" lay-filter="settingsForm">
+                <!-- 推送渠道设置 -->
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 100px;">推送渠道</label>
+                    <div class="layui-input-block">
+                        <div class="layui-checkbox">
+                            <input type="checkbox" name="channels" value="sms" checked>
+                            <div class="layui-unselect layui-checkbox layui-checkbox-checked"></div>
+                            <span>短信</span>
+                        </div>
+                        <div class="layui-checkbox">
+                            <input type="checkbox" name="channels" value="email" checked>
+                            <div class="layui-unselect layui-checkbox layui-checkbox-checked"></div>
+                            <span>邮件</span>
+                        </div>
+                        <div class="layui-checkbox">
+                            <input type="checkbox" name="channels" value="app" checked>
+                            <div class="layui-unselect layui-checkbox layui-checkbox-checked"></div>
+                            <span>APP推送</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 预警级别设置 -->
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 100px;">预警级别</label>
+                    <div class="layui-input-block">
+                        <div class="layui-radio">
+                            <input type="radio" name="alertLevel" value="all" checked>
+                            <div class="layui-unselect layui-radio layui-radio-checked"></div>
+                            <span>全部预警（包括提示、警告、紧急）</span>
+                        </div>
+                        <div class="layui-radio">
+                            <input type="radio" name="alertLevel" value="warning">
+                            <div class="layui-unselect layui-radio"></div>
+                            <span>仅警告和紧急预警</span>
+                        </div>
+                        <div class="layui-radio">
+                            <input type="radio" name="alertLevel" value="urgent">
+                            <div class="layui-unselect layui-radio"></div>
+                            <span>仅紧急预警</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 推送时间设置 -->
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 100px;">推送时段</label>
+                    <div class="layui-input-block">
+                        <select name="timeRange">
+                            <option value="worktime" selected>工作时间（9:00-18:00）</option>
+                            <option value="alltime">全天24小时</option>
+                            <option value="custom">自定义时段</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 重复推送设置 -->
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 100px;">重复提醒</label>
+                    <div class="layui-input-block">
+                        <select name="repeatInterval">
+                            <option value="none">不重复提醒</option>
+                            <option value="30min">每30分钟</option>
+                            <option value="1hour" selected>每1小时</option>
+                            <option value="3hour">每3小时</option>
+                            <option value="1day">每天一次</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 接收人设置 -->
+                <div class="layui-form-item">
+                    <label class="layui-form-label" style="width: 100px;">接收人设置</label>
+                    <div class="layui-input-block">
+                        <button type="button" class="layui-btn layui-btn-sm" id="selectUsers">选择接收人</button>
+                        <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                            当前：张经理、李主管、王总监、采购组、销售组
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="cancelSettings">取消</button>
+            <button class="layui-btn layui-btn-sm" lay-submit lay-filter="submitSettings">保存设置</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        layui.use(['form', 'layer'], function() {
+            var form = layui.form,
+                layer = layui.layer;
+            
+            // 初始化图表
+            initCharts();
+            
+            // 图表初始化
+            function initCharts() {
+                // 推送渠道统计
+                new Chart(document.getElementById('channelChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['短信', '邮件', 'APP推送'],
+                        datasets: [{
+                            data: [35, 25, 40],
+                            backgroundColor: ['#1976d2', '#2e7d32', '#ef6c00']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {font: {size: 12}}
+                            }
+                        }
+                    }
+                });
+                
+                // 预警类型分布
+                new Chart(document.getElementById('typeChart'), {
+                    type: 'pie',
+                    data: {
+                        labels: ['库存不足', '临期产品', '库存积压'],
+                        datasets: [{
+                            data:  [45, 30, 25],
+                            backgroundColor: ['#F44336', '#FF9800', '#4CAF50']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {font: {size: 12}}
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 打开设置弹窗
+            $('#settingsBtn').click(function() {
+                $('#settingsModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            });
+            
+            // 关闭设置弹窗
+            $('#cancelSettings').click(function() {
+                $('#settingsModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+            
+            // 选择接收人
+            $('#selectUsers').click(function() {
+                layer.alert('打开接收人选择面板（实际应用中为多选组件）', {
+                    title: '选择接收人',
+                    area: ['400px', '300px']
+                });
+            });
+            
+            // 保存设置
+            form.on('submit(submitSettings)', function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('推送设置已保存', {icon: 1});
+                }, 800);
+                return false;
+            });
+        });
+    </script>
+</body>
+</html>
+    

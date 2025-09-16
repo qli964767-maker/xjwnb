@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>简化版缺货预警系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+        }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .search-item {
+            flex: 1;
+            min-width: 150px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-normal { background-color: #4CAF50; }
+        .status-warning { background-color: #FF9800; }
+        .status-danger { background-color: #F44336; }
+        
+        .priority-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .priority-high { background-color: #ffebee; color: #F44336; }
+        .priority-medium { background-color: #fff3e0; color: #FF9800; }
+        .priority-low { background-color: #e8f5e9; color: #4CAF50; }
+        
+        .dashboard {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .dashboard-card {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .dashboard-value {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .stock-progress {
+            height: 6px;
+            border-radius: 3px;
+            background-color: #eee;
+            margin: 5px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+        }
+        .progress-normal { background-color: #4CAF50; }
+        .progress-warning { background-color: #FF9800; }
+        .progress-danger { background-color: #F44336; }
+    </style>
+</head>
+<body>
+    <div class="page-title">
+        <i class="fa fa-exclamation-triangle"></i> 缺货预警触发系统
+    </div>
+
+    <!-- 数据概览 -->
+    <div class="dashboard">
+        <div class="dashboard-card">
+            <i class="fa fa-check-circle" style="color: #4CAF50; font-size: 20px;"></i>
+            <div class="dashboard-value">286</div>
+            <div>正常库存</div>
+        </div>
+        <div class="dashboard-card">
+            <i class="fa fa-exclamation-circle" style="color: #FF9800; font-size: 20px;"></i>
+            <div class="dashboard-value">42</div>
+            <div>预警库存</div>
+        </div>
+        <div class="dashboard-card">
+            <i class="fa fa-times-circle" style="color: #F44336; font-size: 20px;"></i>
+            <div class="dashboard-value">18</div>
+            <div>缺货商品</div>
+        </div>
+    </div>
+
+    <!-- 预警列表 -->
+    <div class="layui-card">
+        <div class="layui-card-header">
+            商品库存预警列表
+        </div>
+        <div class="layui-card-body">
+            <div class="search-bar">
+                <div class="search-item">
+                    <input type="text" placeholder="搜索商品名称/编码" class="layui-input" id="goodsSearch">
+                </div>
+                <div class="search-item">
+                    <select name="stockStatus" id="stockStatus" lay-verify="required">
+                        <option value="">全部状态</option>
+                        <option value="normal">正常库存</option>
+                        <option value="warning">预警库存</option>
+                        <option value="danger">缺货状态</option>
+                    </select>
+                </div>
+                <div class="search-item">
+                    <button class="layui-btn" id="searchBtn">
+                        <i class="fa fa-search"></i> 搜索
+                    </button>
+                    <button class="layui-btn layui-btn-primary" id="refreshBtn">
+                        <i class="fa fa-refresh"></i> 刷新
+                    </button>
+                </div>
+            </div>
+
+            <table class="layui-table" lay-size="sm">
+                <thead>
+                    <tr>
+                        <th>商品编码</th>
+                        <th>商品名称</th>
+                        <th>规格</th>
+                        <th>库存数量</th>
+                        <th>预警线</th>
+                        <th>库存状态</th>
+                        <th>优先级</th>
+                        <th>最后预警时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>G001</td>
+                        <td>水润保湿精华液</td>
+                        <td>50ml</td>
+                        <td>12</td>
+                        <td>20</td>
+                        <td>
+                            <span class="status-tag status-warning">预警库存</span>
+                            <div class="stock-progress">
+                                <div class="progress-bar progress-warning" style="width: 60%;"></div>
+                            </div>
+                        </td>
+                        <td><span class="priority-tag priority-high">高</span></td>
+                        <td>2023-10-16 09:25</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="handleAlert('G001')">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>G002</td>
+                        <td>丝绒哑光口红</td>
+                        <td>3.5g #正红色</td>
+                        <td>0</td>
+                        <td>15</td>
+                        <td>
+                            <span class="status-tag status-danger">缺货状态</span>
+                            <div class="stock-progress">
+                                <div class="progress-bar progress-danger" style="width: 0%;"></div>
+                            </div>
+                        </td>
+                        <td><span class="priority-tag priority-high">高</span></td>
+                        <td>2023-10-15 14:30</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="handleAlert('G002')">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>G003</td>
+                        <td>修护洗发水</td>
+                        <td>300ml</td>
+                        <td>35</td>
+                        <td>25</td>
+                        <td>
+                            <span class="status-tag status-normal">正常库存</span>
+                            <div class="stock-progress">
+                                <div class="progress-bar progress-normal" style="width: 87%;"></div>
+                            </div>
+                        </td>
+                        <td><span class="priority-tag priority-medium">中</span></td>
+                        <td>-</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs layui-btn-primary" onclick="setAlert('G003')">
+                                <i class="fa fa-cog"></i> 规则
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>G004</td>
+                        <td>焕白面膜</td>
+                        <td>10片装</td>
+                        <td>5</td>
+                        <td>15</td>
+                        <td>
+                            <span class="status-tag status-danger">缺货状态</span>
+                            <div class="stock-progress">
+                                <div class="progress-bar progress-danger" style="width: 20%;"></div>
+                            </div>
+                        </td>
+                        <td><span class="priority-tag priority-medium">中</span></td>
+                        <td>2023-10-14 08:15</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs" onclick="handleAlert('G004')">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="text-align: right;">
+                <div id="pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 处理预警弹窗 -->
+    <div class="layui-modal" id="handleAlertModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-cog"></i> 处理库存预警 - <span id="handleGoodsCode"></span>
+        </div>
+        <div class="layui-modal-body">
+            <form class="layui-form" lay-filter="handleAlertForm">
+                <input type="hidden" name="goodsId" id="handleGoodsId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理方式</label>
+                    <div class="layui-input-block">
+                        <radio name="handleType" value="purchase" checked> 创建采购单</radio>
+                        <radio name="handleType" value="ignore"> 暂时忽略</radio>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" id="purchaseQuantityContainer">
+                    <label class="layui-form-label">采购数量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="purchaseQuantity" id="purchaseQuantity" 
+                            lay-verify="required|number" min="1" class="layui-input">
+                        <div class="layui-form-mid layui-word-aux" id="suggestedQtyText"></div>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item" id="ignoreDaysContainer" style="display: none;">
+                    <label class="layui-form-label">忽略天数</label>
+                    <div class="layui-input-block">
+                        <select name="ignoreDays" lay-verify="required">
+                            <option value="3">3天</option>
+                            <option value="7" selected>7天</option>
+                            <option value="15">15天</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <textarea name="handleRemark" class="layui-textarea" rows="2"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelHandle">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitHandle">确认处理</button>
+        </div>
+    </div>
+
+    <!-- 预警规则设置弹窗 -->
+    <div class="layui-modal" id="alertRulesModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-cog"></i> 预警规则设置 - <span id="ruleGoodsCode"></span>
+        </div>
+        <div class="layui-modal-body">
+            <form class="layui-form" lay-filter="alertRulesForm">
+                <input type="hidden" name="goodsId" id="ruleGoodsId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">预警线</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="alertThreshold" lay-verify="required|number" 
+                            min="0" class="layui-input">
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">优先级</label>
+                    <div class="layui-input-block">
+                        <select name="priority" lay-verify="required">
+                            <option value="high">高</option>
+                            <option value="medium" selected>中</option>
+                            <option value="low">低</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">启用状态</label>
+                    <div class="layui-input-block">
+                        <radio name="alertEnabled" value="1" checked> 启用</radio>
+                        <radio name="alertEnabled" value="0"> 禁用</radio>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelRule">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="saveRule">保存</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage;
+
+            // 库存数据
+            var stockData = {
+                "G001": {id: "G001", code: "G001", name: "水润保湿精华液", spec: "50ml", 
+                        stock: 12, threshold: 20, status: "warning", priority: "high"},
+                "G002": {id: "G002", code: "G002", name: "丝绒哑光口红", spec: "3.5g #正红色", 
+                        stock: 0, threshold: 15, status: "danger", priority: "high"},
+                "G003": {id: "G003", code: "G003", name: "修护洗发水", spec: "300ml", 
+                        stock: 35, threshold: 25, status: "normal", priority: "medium"},
+                "G004": {id: "G004", code: "G004", name: "焕白面膜", spec: "10片装", 
+                        stock: 5, threshold: 15, status: "danger", priority: "medium"}
+            };
+
+            // 处理预警
+            window.handleAlert = function(goodsId) {
+                var goods = stockData[goodsId];
+                if (!goods) return;
+
+                // 填充数据
+                $('#handleGoodsCode').text(goods.code);
+                $('#handleGoodsId').val(goodsId);
+                
+                // 计算建议采购数量
+                var suggestedQty = goods.threshold - goods.stock + 10;
+                suggestedQty = suggestedQty > 0 ? suggestedQty : 10;
+                $('#purchaseQuantity').val(suggestedQty);
+                $('#suggestedQtyText').text(`建议采购: ${suggestedQty} (补充至预警线以上)`);
+
+                // 显示弹窗
+                $('#handleAlertModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 设置预警规则
+            window.setAlert = function(goodsId) {
+                var goods = stockData[goodsId];
+                if (!goods) return;
+
+                // 填充数据
+                $('#ruleGoodsCode').text(goods.code);
+                $('#ruleGoodsId').val(goodsId);
+                $('input[name="alertThreshold"]').val(goods.threshold);
+                $('select[name="priority"]').val(goods.priority);
+                
+                form.render();
+
+                // 显示弹窗
+                $('#alertRulesModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 处理方式切换
+            form.on('radio(handleType)', function(data) {
+                if (data.value === 'purchase') {
+                    $('#purchaseQuantityContainer').show();
+                    $('#ignoreDaysContainer').hide();
+                } else {
+                    $('#purchaseQuantityContainer').hide();
+                    $('#ignoreDaysContainer').show();
+                }
+            });
+
+            // 关闭弹窗
+            $('#cancelHandle, #cancelRule').click(function() {
+                $('#handleAlertModal, #alertRulesModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 提交处理
+            form.on('submit(submitHandle)', function(data) {
+                var goodsId = $('#handleGoodsId').val();
+                var goods = stockData[goodsId];
+                
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#handleAlertModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg(`商品 ${goods.code} 预警已处理`, {icon: 1});
+                }, 800);
+                
+                return false;
+            });
+
+            // 保存规则
+            form.on('submit(saveRule)', function(data) {
+                var goodsId = $('#ruleGoodsId').val();
+                var goods = stockData[goodsId];
+                
+                layer.load(2);
+                setTimeout(function() {
+                    layer.closeAll('loading');
+                    $('#alertRulesModal').hide();
+                    $('.layui-modal-shade').remove();
+                    layer.msg(`商品 ${goods.code} 规则已保存`, {icon: 1});
+                }, 800);
+                
+                return false;
+            });
+
+            // 搜索和刷新
+            $('#searchBtn').click(function() {
+                var keyword = $('#goodsSearch').val();
+                layer.msg('搜索: ' + keyword, {icon: 1});
+            });
+            
+            $('#refreshBtn').click(function() {
+                var loadIndex = layer.load(1);
+                setTimeout(function() {
+                    layer.close(loadIndex);
+                    layer.msg('库存已刷新', {icon: 1});
+                }, 800);
+            });
+
+            // 初始化分页
+            laypage.render({
+                elem: 'pagination',
+                count: 50,
+                limit: 10,
+                layout: ['prev', 'page', 'next']
+            });
+        });
+    </script>
+</body>
+</html>
+    

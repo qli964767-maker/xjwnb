@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>操作权限设置</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body { background: #f5f5f5; padding: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .role-selector { background: #fff; border-radius: 4px; padding: 15px; margin-bottom: 15px; }
+        .permission-tree { background: #fff; border-radius: 4px; padding: 15px; }
+        .tree-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .tree-title { font-weight: 500; }
+        .operation-bar { display: flex; gap: 10px; }
+        .layui-tree-check { margin-right: 5px; }
+        .layui-tree-entry { padding: 5px 0; }
+        .layui-tree-icon { margin-right: 5px; }
+        .permission-level { margin-left: 20px; }
+        .permission-desc { font-size: 12px; color: #666; margin-left: 25px; margin-top: 2px; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="header">
+        <h2 style="margin: 0; font-size: 16px;"><i class="fa fa-shield" style="color: #2196F3;"></i> 操作权限设置</h2>
+        <div>
+            <button class="layui-btn" id="savePermissionBtn"><i class="fa fa-save"></i> 保存设置</button>
+            <button class="layui-btn layui-btn-primary" id="refreshBtn"><i class="fa fa-refresh"></i> 刷新</button>
+            <button class="layui-btn layui-btn-primary" id="expandAllBtn"><i class="fa fa-plus-square-o"></i> 全部展开</button>
+            <button class="layui-btn layui-btn-primary" id="collapseAllBtn"><i class="fa fa-minus-square-o"></i> 全部折叠</button>
+        </div>
+    </div>
+
+    <!-- 角色选择器 -->
+    <div class="role-selector layui-form">
+        <div class="layui-form-item">
+            <label class="layui-form-label">选择角色</label>
+            <div class="layui-input-block">
+                <select name="roleId" lay-filter="roleSelect" id="roleSelect">
+                    <option value="">-- 请选择角色 --</option>
+                    <option value="1" selected>系统管理员</option>
+                    <option value="2">库存主管</option>
+                    <option value="3">仓库管理员</option>
+                    <option value="4">采购专员</option>
+                    <option value="5">普通员工</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="layui-form-item">
+            <label class="layui-form-label">角色描述</label>
+            <div class="layui-input-block">
+                <textarea class="layui-textarea" rows="2" readonly>系统管理员拥有系统全部操作权限，可进行用户管理、角色配置、系统设置等所有操作。</textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- 权限树 -->
+    <div class="permission-tree">
+        <div class="tree-header">
+            <div class="tree-title">权限项配置</div>
+            <div class="operation-bar">
+                <button class="layui-btn layui-btn-sm" id="checkAllBtn"><i class="fa fa-check-square-o"></i> 全选</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="uncheckAllBtn"><i class="fa fa-square-o"></i> 取消全选</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary" id="reverseCheckBtn"><i class="fa fa-exchange"></i> 反选</button>
+            </div>
+        </div>
+        
+        <div id="permissionTree" class="layui-tree"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'tree'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                tree = layui.tree;
+            
+            // 权限数据
+            var permissionData = [
+                {
+                    title: '系统管理',
+                    id: 1,
+                    checked: true,
+                    spread: true,
+                    children: [
+                        {
+                            title: '用户管理',
+                            id: 101,
+                            checked: true,
+                            spread: true,
+                            children: [
+                                { title: '查看用户列表', id: 10101, checked: true, desc: '允许查看系统中的所有用户信息' },
+                                { title: '新增用户', id: 10102, checked: true, desc: '允许创建新用户账号' },
+                                { title: '编辑用户', id: 10103, checked: true, desc: '允许修改用户信息和状态' },
+                                { title: '删除用户', id: 10104, checked: true, desc: '允许删除系统用户' },
+                                { title: '重置密码', id: 10105, checked: true, desc: '允许重置用户登录密码' }
+                            ]
+                        },
+                        {
+                            title: '角色管理',
+                            id: 102,
+                            checked: true,
+                            spread: true,
+                            children: [
+                                { title: '查看角色列表', id: 10201, checked: true },
+                                { title: '新增角色', id: 10202, checked: true },
+                                { title: '编辑角色', id: 10203, checked: true },
+                                { title: '删除角色', id: 10204, checked: true },
+                                { title: '配置角色权限', id: 10205, checked: true }
+                            ]
+                        },
+                        {
+                            title: '系统设置',
+                            id: 103,
+                            checked: true,
+                            spread: true,
+                            children: [
+                                { title: '基础设置', id: 10301, checked: true },
+                                { title: '安全设置', id: 10302, checked: true },
+                                { title: '日志管理', id: 10303, checked: true }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    title: '库存管理',
+                    id: 2,
+                    checked: true,
+                    spread: true,
+                    children: [
+                        {
+                            title: '库存查询',
+                            id: 201,
+                            checked: true,
+                            children: [
+                                { title: '查看库存明细', id: 20101, checked: true },
+                                { title: '库存预警查询', id: 20102, checked: true },
+                                { title: '库存盘点', id: 20103, checked: true }
+                            ]
+                        },
+                        {
+                            title: '入库管理',
+                            id: 202,
+                            checked: true,
+                            children: [
+                                { title: '查看入库记录', id: 20201, checked: true },
+                                { title: '创建入库单', id: 20202, checked: true },
+                                { title: '审核入库单', id: 20203, checked: true },
+                                { title: '取消入库单', id: 20204, checked: true }
+                            ]
+                        },
+                        {
+                            title: '出库管理',
+                            id: 203,
+                            checked: true,
+                            children: [
+                                { title: '查看出库记录', id: 20301, checked: true },
+                                { title: '创建出库单', id: 20302, checked: true },
+                                { title: '审核出库单', id: 20303, checked: true },
+                                { title: '取消出库单', id: 20304, checked: true }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    title: '报表管理',
+                    id: 3,
+                    checked: true,
+                    spread: true,
+                    children: [
+                        {
+                            title: '库存价值报表',
+                            id: 301,
+                            checked: true,
+                            children: [
+                                { title: '查看报表', id: 30101, checked: true },
+                                { title: '导出报表', id: 30102, checked: true },
+                                { title: '打印报表', id: 30103, checked: true }
+                            ]
+                        },
+                        {
+                            title: '出入库趋势报表',
+                            id: 302,
+                            checked: true,
+                            children: [
+                                { title: '查看报表', id: 30201, checked: true },
+                                { title: '导出报表', id: 30202, checked: true },
+                                { title: '打印报表', id: 30203, checked: true }
+                            ]
+                        },
+                        {
+                            title: '周转效率报表',
+                            id: 303,
+                            checked: true,
+                            children: [
+                                { title: '查看报表', id: 30301, checked: true },
+                                { title: '导出报表', id: 30302, checked: true },
+                                { title: '打印报表', id: 30303, checked: true }
+                            ]
+                        }
+                    ]
+                }
+            ];
+            
+            // 渲染权限树
+            var permissionTree = tree.render({
+                elem: '#permissionTree',
+                data: permissionData,
+                showCheckbox: true,
+                id: 'permissionTreeId',
+                isJump: false,
+                text: {
+                    defaultNodeName: '未命名',
+                    none: '无权限数据'
+                },
+                oncheck: function(obj) {
+                    console.log('权限变更:', obj.data);
+                }
+            });
+            
+            // 角色选择变化
+            form.on('select(roleSelect)', function(data) {
+                var roleId = data.value;
+                if (!roleId) return;
+                
+                // 模拟加载不同角色的权限配置
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    
+                    // 根据角色ID加载不同的权限配置
+                    // 这里简化处理，实际应用中应从服务器加载
+                    var rolePermissions = getRolePermissions(roleId);
+                    permissionTree.reload({
+                        data: rolePermissions
+                    });
+                    
+                    // 更新角色描述
+                    updateRoleDescription(roleId);
+                }, 600);
+            });
+            
+            // 根据角色ID获取权限配置
+            function getRolePermissions(roleId) {
+                // 这里仅作示例，实际应用中应从服务器获取
+                var permissions = JSON.parse(JSON.stringify(permissionData));
+                
+                // 为不同角色设置不同的权限
+                if (roleId == 5) { // 普通员工
+                    setNodeChecked(permissions, 1, false); // 系统管理全部取消
+                    setNodeChecked(permissions, 20202, false); // 取消创建入库单
+                    setNodeChecked(permissions, 20203, false); // 取消审核入库单
+                    setNodeChecked(permissions, 20302, false); // 取消创建出库单
+                    setNodeChecked(permissions, 20303, false); // 取消审核出库单
+                } else if (roleId == 4) { // 采购专员
+                    setNodeChecked(permissions, 1, false); // 系统管理全部取消
+                    setNodeChecked(permissions, 203, false); // 出库管理全部取消
+                }
+                
+                return permissions;
+            }
+            
+            // 递归设置节点选中状态
+            function setNodeChecked(nodes, nodeId, checked) {
+                nodes.forEach(node => {
+                    if (node.id == nodeId) {
+                        node.checked = checked;
+                    }
+                    if (node.children && node.children.length > 0) {
+                        setNodeChecked(node.children, nodeId, checked);
+                    }
+                });
+            }
+            
+            // 更新角色描述
+            function updateRoleDescription(roleId) {
+                var descriptions = {
+                    '1': '系统管理员拥有系统全部操作权限，可进行用户管理、角色配置、系统设置等所有操作。',
+                    '2': '库存主管负责库存整体管理，拥有库存查询、出入库审核等权限，但无系统管理权限。',
+                    '3': '仓库管理员负责日常仓库操作，拥有出入库单创建、库存盘点等执行权限。',
+                    '4': '采购专员负责采购相关工作，拥有入库管理相关权限，无出库管理权限。',
+                    '5': '普通员工仅有查看权限，可浏览库存信息和报表，但无操作权限。'
+                };
+                
+                $('.role-selector textarea').val(descriptions[roleId] || '');
+            }
+            
+            // 保存权限设置
+            $('#savePermissionBtn').click(function() {
+                // 获取选中的权限节点
+                var checkedData = tree.getChecked('permissionTreeId');
+                
+                // 模拟保存操作
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('权限设置保存成功', {icon: 1});
+                }, 800);
+            });
+            
+            // 刷新权限
+            $('#refreshBtn').click(function() {
+                var roleId = $('#roleSelect').val();
+                if (!roleId) {
+                    layer.msg('请先选择角色', {icon: 2});
+                    return;
+                }
+                
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('权限数据已刷新', {icon: 1});
+                }, 500);
+            });
+            
+            // 全部展开
+            $('#expandAllBtn').click(function() {
+                tree.expand('permissionTreeId', true);
+            });
+            
+            // 全部折叠
+            $('#collapseAllBtn').click(function() {
+                tree.expand('permissionTreeId', false);
+            });
+            
+            // 全选
+            $('#checkAllBtn').click(function() {
+                tree.setChecked('permissionTreeId', {id: 0}, true);
+            });
+            
+            // 取消全选
+            $('#uncheckAllBtn').click(function() {
+                tree.setChecked('permissionTreeId', {id: 0}, false);
+            });
+            
+            // 反选
+            $('#reverseCheckBtn').click(function() {
+                var checkedNodes = tree.getChecked('permissionTreeId');
+                var allNodes = getAllNodes(permissionData);
+                
+                // 先取消所有选中
+                tree.setChecked('permissionTreeId', {id: 0}, false);
+                
+                // 选中未选中的节点
+                allNodes.forEach(node => {
+                    var isChecked = checkedNodes.some(n => n.id === node.id);
+                    if (!isChecked) {
+                        tree.setChecked('permissionTreeId', {id: node.id}, true);
+                    }
+                });
+            });
+            
+            // 获取所有节点
+            function getAllNodes(nodes, result = []) {
+                nodes.forEach(node => {
+                    result.push(node);
+                    if (node.children && node.children.length > 0) {
+                        getAllNodes(node.children, result);
+                    }
+                });
+                return result;
+            }
+            
+            // 初始化渲染
+            form.render();
+        });
+    </script>
+</body>
+</html>
+    

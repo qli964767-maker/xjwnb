@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>化妆品列表</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .list-card {
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .list-header {
+            padding: 12px 20px;
+            background-color: #f8f8f8;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            display: flex;
+        }
+        .list-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+        .list-item:hover {
+            background-color: #fafafa;
+        }
+        .list-item:last-child {
+            border-bottom: none;
+        }
+        .col {
+            flex: 1;
+        }
+        .col-id { flex: 0.5; }
+        .col-name { flex: 2; }
+        .col-brand { flex: 1.5; }
+        .col-spec { flex: 1; }
+        .operate {
+            flex: 1;
+            text-align: right;
+        }
+        .delete-btn {
+            color: #FF5722;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 2px;
+            transition: background-color 0.2s;
+            display: inline-block;
+        }
+        .delete-btn:hover {
+            background-color: #fff5f5;
+        }
+        .add-btn {
+            display: inline-block;
+            margin-bottom: 15px;
+            padding: 6px 12px;
+            background-color: #1E9FFF;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .add-btn:hover {
+            background-color: #0090e7;
+        }
+        .empty-tip {
+            text-align: center;
+            padding: 50px 0;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">化妆品信息列表</div>
+        
+        <div class="add-btn" id="addBtn">
+            <i class="fa fa-plus"></i> 添加化妆品
+        </div>
+        
+        <div class="list-card">
+            <div class="list-header">
+                <div class="col-id">ID</div>
+                <div class="col-name">产品名称</div>
+                <div class="col-brand">品牌</div>
+                <div class="col-spec">规格</div>
+                <div class="operate">操作</div>
+            </div>
+            
+            <div id="listBody">
+                <!-- 数据将通过JS动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['layer'], function() {
+            var layer = layui.layer;
+            
+            // 模拟化妆品数据
+            let products = [
+                { id: 1, name: "水润保湿精华液", brand: "肌肤之悦", spec: "50ml" },
+                { id: 2, name: "丝绒哑光口红", brand: "色彩主义", spec: "3.5g" },
+                { id: 3, name: "修护洗发水", brand: "丝柔", spec: "300ml" },
+                { id: 4, name: "男士古龙香水", brand: "风尚", spec: "100ml" },
+                { id: 5, name: "焕白面膜", brand: "肌肤之悦", spec: "10片装" }
+            ];
+            
+            // 渲染列表
+            function renderList() {
+                if (products.length === 0) {
+                    $('#listBody').html('<div class="empty-tip"><i class="fa fa-inbox"></i> 暂无化妆品数据</div>');
+                    return;
+                }
+                
+                let html = '';
+                products.forEach(item => {
+                    html += `<div class="list-item" data-id="${item.id}">`;
+                    html += `<div class="col-id">${item.id}</div>`;
+                    html += `<div class="col-name">${item.name}</div>`;
+                    html += `<div class="col-brand">${item.brand}</div>`;
+                    html += `<div class="col-spec">${item.spec}</div>`;
+                    html += `<div class="operate">`;
+                    html += `<span class="delete-btn" onclick="deleteItem(${item.id})"><i class="fa fa-trash"></i> 删除</span>`;
+                    html += `</div></div>`;
+                });
+                $('#listBody').html(html);
+            }
+            
+            // 初始渲染
+            renderList();
+            
+            // 删除功能
+            window.deleteItem = function(id) {
+                // 找到要删除的项目
+                const item = products.find(p => p.id === id);
+                if (!item) return;
+                
+                // 确认删除
+                layer.confirm(`确定要删除【${item.name}】吗？`, {
+                    title: '删除确认',
+                    icon: 3
+                }, function(index) {
+                    // 执行删除
+                    products = products.filter(p => p.id !== id);
+                    // 重新渲染列表
+                    renderList();
+                    // 关闭弹窗
+                    layer.close(index);
+                    // 提示成功
+                    layer.msg('删除成功', {icon: 1, time: 1000});
+                });
+            };
+            
+            // 添加按钮功能
+            $('#addBtn').click(function() {
+                // 生成新ID
+                const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+                // 添加新数据
+                products.push({
+                    id: newId,
+                    name: "新添加产品",
+                    brand: "未知品牌",
+                    spec: "默认规格"
+                });
+                // 重新渲染
+                renderList();
+                // 提示
+                layer.msg('添加成功', {icon: 1, time: 1000});
+            });
+        });
+    </script>
+</body>
+</html>

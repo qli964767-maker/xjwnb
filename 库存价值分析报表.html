@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>库存价值分析报表</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        body { background: #f5f5f5; padding: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .value-card { background: #fff; border-radius: 4px; padding: 12px; margin-bottom: 15px; }
+        .value-card-title { font-size: 13px; color: #666; }
+        .value-card-value { font-size: 20px; font-weight: bold; margin: 5px 0; }
+        .value-card-desc { font-size: 12px; color: #999; }
+        .filter-area { background: #fff; padding: 12px; border-radius: 4px; margin-bottom: 15px; }
+        .table-wrapper { background: #fff; border-radius: 4px; overflow: hidden; }
+        .table-header { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+        .value-trend-item { display: flex; align-items: center; margin-bottom: 8px; }
+        .value-trend-label { width: 80px; font-size: 13px; }
+        .value-trend-bar { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+        .value-trend-fill { height: 100%; }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <div class="header">
+        <h2 style="margin: 0; font-size: 16px;"><i class="fa fa-line-chart" style="color: #4CAF50;"></i> 库存价值分析报表</h2>
+        <div>
+            <button class="layui-btn layui-btn-sm" id="exportBtn"><i class="fa fa-download"></i> 导出</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="refreshBtn"><i class="fa fa-refresh"></i> 刷新</button>
+        </div>
+    </div>
+
+    <!-- 核心价值指标 -->
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md3">
+            <div class="value-card">
+                <div class="value-card-title">库存总价值</div>
+                <div class="value-card-value" style="color: #4CAF50;">¥2,458,600</div>
+                <div class="value-card-desc">较上月 <span style="color: #F44336;">↑3.2%</span></div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="value-card">
+                <div class="value-card-title">平均库存周转率</div>
+                <div class="value-card-value" style="color: #2196F3;">6.8次/年</div>
+                <div class="value-card-desc">较上月 <span style="color: #4CAF50;">↑0.5</span></div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="value-card">
+                <div class="value-card-title">资金占用成本</div>
+                <div class="value-card-value" style="color: #FF9800;">¥24,586/月</div>
+                <div class="value-card-desc">按10%年化利率计算</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="value-card">
+                <div class="value-card-title">呆滞库存价值</div>
+                <div class="value-card-value" style="color: #F44336;">¥186,400</div>
+                <div class="value-card-desc">占总库存 <span style="color: #F44336;">7.6%</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 筛选条件 -->
+    <div class="filter-area layui-form">
+        <div class="layui-row">
+            <div class="layui-col-md2">
+                <select name="category" class="layui-select layui-select-sm">
+                    <option value="" selected>全部分类</option>
+                    <option value="electronics">电子产品</option>
+                    <option value="furniture">家居家具</option>
+                    <option value="clothing">服装鞋帽</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="valuation" class="layui-select layui-select-sm">
+                    <option value="cost" selected>成本价</option>
+                    <option value="market">市场价</option>
+                    <option value="retail">零售价</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="turnover" class="layui-select layui-select-sm">
+                    <option value="" selected>全部周转率</option>
+                    <option value="high">高周转（>12次/年）</option>
+                    <option value="mid">中周转（6-12次/年）</option>
+                    <option value="low">低周转（<6次/年）</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <select name="dateRange" class="layui-select layui-select-sm">
+                    <option value="month" selected>本月</option>
+                    <option value="quarter">本季度</option>
+                    <option value="year">本年</option>
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <button class="layui-btn layui-btn-sm">查询</button>
+                <button class="layui-btn layui-btn-sm layui-btn-primary">重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 价值分析图表 -->
+    <div class="layui-row layui-col-space10" style="margin-bottom: 15px;">
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header" style="font-size: 14px;">库存价值构成</div>
+                <div class="layui-card-body" style="padding: 10px; height: 260px;">
+                    <canvas id="valueCompositionChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header" style="font-size: 14px;">价值-周转效率分析</div>
+                <div class="layui-card-body" style="padding: 10px; height: 260px;">
+                    <canvas id="valueTurnoverChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库存价值明细 -->
+    <div class="table-wrapper">
+        <div class="table-header">
+            <div style="font-weight: 500;">库存价值明细</div>
+            <div>
+                <input type="text" placeholder="搜索商品" class="layui-input layui-input-sm" style="width: 200px; display: inline-block;">
+                <button class="layui-btn layui-btn-sm">搜索</button>
+            </div>
+        </div>
+        <table class="layui-table" lay-size="sm" style="margin: 0;">
+            <thead>
+                <tr>
+                    <th>商品编码</th>
+                    <th>商品名称</th>
+                    <th>分类</th>
+                    <th>库存数量</th>
+                    <th>单位成本</th>
+                    <th>库存价值</th>
+                    <th>周转率(次/年)</th>
+                    <th>价值周转效率</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>SKU001</td>
+                    <td>智能手机Pro</td>
+                    <td>电子产品</td>
+                    <td>42</td>
+                    <td>¥4,800</td>
+                    <td>¥201,600</td>
+                    <td>14.5</td>
+                    <td><span class="layui-badge layui-bg-green">高效</span></td>
+                    <td><button class="layui-btn layui-btn-xs layui-btn-primary">详情</button></td>
+                </tr>
+                <tr>
+                    <td>SKU002</td>
+                    <td>办公沙发三人位</td>
+                    <td>家居家具</td>
+                    <td>18</td>
+                    <td>¥2,600</td>
+                    <td>¥46,800</td>
+                    <td>3.2</td>
+                    <td><span class="layui-badge layui-bg-red">低效</span></td>
+                    <td><button class="layui-btn layui-btn-xs layui-btn-primary">详情</button></td>
+                </tr>
+                <tr>
+                    <td>SKU003</td>
+                    <td>纯棉衬衫</td>
+                    <td>服装鞋帽</td>
+                    <td>120</td>
+                    <td>¥180</td>
+                    <td>¥21,600</td>
+                    <td>8.7</td>
+                    <td><span class="layui-badge layui-bg-blue">中等</span></td>
+                    <td><button class="layui-btn layui-btn-xs layui-btn-primary">详情</button></td>
+                </tr>
+                <tr>
+                    <td>SKU004</td>
+                    <td>无线蓝牙耳机</td>
+                    <td>电子产品</td>
+                    <td>85</td>
+                    <td>¥320</td>
+                    <td>¥27,200</td>
+                    <td>16.3</td>
+                    <td><span class="layui-badge layui-bg-green">高效</span></td>
+                    <td><button class="layui-btn layui-btn-xs layui-btn-primary">详情</button></td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="padding: 12px; text-align: right; border-top: 1px solid #eee;">
+            <div class="layui-laypage layui-laypage-default">
+                <span class="layui-laypage-count">共 216 条</span>
+                <a href="#" class="layui-laypage-prev">上一页</a>
+                <span class="layui-laypage-curr"><em>1</em></span>
+                <a href="#">2</a>
+                <a href="#">3</a>
+                <a href="#" class="layui-laypage-next">下一页</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer'], function() {
+            var form = layui.form,
+                layer = layui.layer;
+            
+            // 初始化图表
+            initCharts();
+            
+            // 图表初始化
+            function initCharts() {
+                // 库存价值构成
+                new Chart(document.getElementById('valueCompositionChart'), {
+                    type: 'pie',
+                    data: {
+                        labels: ['电子产品', '家居家具', '服装鞋帽', '其他'],
+                        datasets: [{
+                            data: [58, 22, 15, 5],
+                            backgroundColor: ['#2196F3', '#FF9800', '#4CAF50', '#9E9E9E']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' },
+                            tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + ctx.raw + '%'; } } }
+                        }
+                    }
+                });
+                
+                // 价值-周转效率分析
+                new Chart(document.getElementById('valueTurnoverChart'), {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            {
+                                label: '高效商品',
+                                data: [{x: 15, y: 25}, {x: 18, y: 30}, {x: 14, y: 45}, {x: 20, y: 20}],
+                                backgroundColor: '#4CAF50'
+                            },
+                            {
+                                label: '中等商品',
+                                data: [{x: 8, y: 50}, {x: 10, y: 35}, {x: 7, y: 60}, {x: 9, y: 40}],
+                                backgroundColor: '#2196F3'
+                            },
+                            {
+                                label: '低效商品',
+                                data: [{x: 3, y: 45}, {x: 2, y: 60}, {x: 4, y: 55}, {x: 5, y: 30}],
+                                backgroundColor: '#F44336'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { title: { display: true, text: '周转率(次/年)' } },
+                            y: { title: { display: true, text: '库存价值(万元)' } }
+                        }
+                    }
+                });
+            }
+            
+            // 导出报表
+            $('#exportBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('价值分析报表已导出', {icon: 1});
+                }, 800);
+            });
+            
+            // 刷新数据
+            $('#refreshBtn').click(function() {
+                layer.load(1);
+                setTimeout(function() {
+                    layer.closeAll();
+                    layer.msg('数据已更新', {icon: 1});
+                    initCharts();
+                }, 600);
+            });
+        });
+    </script>
+</body>
+</html>
+    

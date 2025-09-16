@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>化妆品信息修改 - UOLab库存管理平台</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../../lib/layui-v2.6.3/css/layui.css" media="all">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            background-color: #f2f3f5;
+            padding: 15px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .page-title i {
+            color: #1E9FFF;
+            margin-right: 8px;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        .layui-card-header {
+            background-color: #f9f9f9;
+            border-bottom: 1px solid #e6e6e6;
+            padding: 12px 15px;
+            font-weight: 500;
+        }
+        .layui-card-body {
+            padding: 20px;
+        }
+        .layui-form-item {
+            margin-bottom: 18px;
+        }
+        .layui-form-item .layui-form-label {
+            width: 130px;
+            padding: 9px 15px;
+            font-weight: 400;
+            color: #333;
+        }
+        .layui-form-item .layui-input-block {
+            margin-left: 160px;
+        }
+        .layui-form-select dl {
+            max-height: 220px;
+        }
+        .required-mark {
+            color: #FF5722;
+            margin-right: 3px;
+        }
+        .form-tip {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+            line-height: 1.5;
+        }
+        .upload-area {
+            border: 1px dashed #e6e6e6;
+            border-radius: 4px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 5px;
+        }
+        .upload-area:hover {
+            border-color: #1E9FFF;
+            background-color: #f0f7ff;
+        }
+        .upload-icon {
+            font-size: 30px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+        .upload-text {
+            color: #666;
+            font-size: 14px;
+        }
+        .img-preview {
+            margin-top: 15px;
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 4px;
+            display: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .btn-group {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e6e6e6;
+        }
+        .layui-btn + .layui-btn {
+            margin-left: 10px;
+        }
+        .fieldset-legend {
+            font-size: 14px;
+            color: #333;
+            padding: 0 10px;
+        }
+        .layui-elem-field {
+            margin-bottom: 20px;
+            border: 1px solid #e6e6e6;
+            border-radius: 4px;
+        }
+        .layui-elem-field legend {
+            padding: 0 10px;
+            font-weight: 500;
+        }
+        .layui-field-box {
+            padding: 15px 20px;
+        }
+        .disabled-input {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .layui-card {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面标题 -->
+    <div class="page-title">
+        <i class="fa fa-pencil"></i>
+        <span>化妆品信息修改</span>
+    </div>
+
+    <!-- 主表单卡片 -->
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <form class="layui-form" lay-filter="cosmeticForm" id="cosmeticForm">
+                <!-- 隐藏域存储产品ID -->
+                <input type="hidden" name="productId" id="productId">
+                
+                <!-- 基本信息区域 -->
+                <fieldset class="layui-elem-field">
+                    <legend class="fieldset-legend"><i class="fa fa-info-circle" style="color:#1E9FFF;"></i> 基本信息</legend>
+                    <div class="layui-field-box">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>产品名称
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="productName" lay-verify="required" 
+                                    placeholder="请输入化妆品名称" autocomplete="off" 
+                                    class="layui-input" maxlength="50">
+                                <p class="form-tip">示例：XX品牌保湿精华液、YY防晒霜</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>产品编号
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="productCode" lay-verify="required|code" 
+                                    placeholder="请输入产品编号" autocomplete="off" 
+                                    class="layui-input disabled-input" maxlength="20" readonly>
+                                <p class="form-tip">产品编号不可修改</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>产品类别
+                            </label>
+                            <div class="layui-input-block">
+                                <select name="productCategory" lay-verify="required" lay-search>
+                                    <option value="">请选择产品类别</option>
+                                    <option value="skincare">护肤品</option>
+                                    <option value="makeup">彩妆</option>
+                                    <option value="haircare">美发产品</option>
+                                    <option value="fragrance">香水</option>
+                                    <option value="bath">沐浴产品</option>
+                                    <option value="other">其他</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>品牌
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="brand" lay-verify="required" 
+                                    placeholder="请输入品牌名称" autocomplete="off" 
+                                    class="layui-input" maxlength="30">
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>规格
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="specification" lay-verify="required" 
+                                    placeholder="请输入产品规格" autocomplete="off" 
+                                    class="layui-input" maxlength="20">
+                                <p class="form-tip">示例：50ml、100g、30片装、150ml/瓶</p>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- 库存信息区域 -->
+                <fieldset class="layui-elem-field">
+                    <legend class="fieldset-legend"><i class="fa fa-cubes" style="color:#1E9FFF;"></i> 库存信息</legend>
+                    <div class="layui-field-box">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>当前库存
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="number" name="currentStock" lay-verify="required|number|min:0" 
+                                    placeholder="请输入当前库存数量" autocomplete="off" 
+                                    class="layui-input">
+                                <p class="form-tip">修改实际库存数量</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>最低库存阈值
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="number" name="minStockThreshold" lay-verify="required|number|min:0" 
+                                    placeholder="请输入最低库存阈值" autocomplete="off" 
+                                    class="layui-input">
+                                <p class="form-tip">当库存低于此值时将触发预警提示</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">存放位置</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="storageLocation" 
+                                    placeholder="请输入存放位置" autocomplete="off" 
+                                    class="layui-input" maxlength="50">
+                                <p class="form-tip">示例：A区货架3层、冷藏柜B2、仓库1号架</p>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- 产品详情区域 -->
+                <fieldset class="layui-elem-field">
+                    <legend class="fieldset-legend"><i class="fa fa-list-alt" style="color:#1E9FFF;"></i> 产品详情</legend>
+                    <div class="layui-field-box">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">成分</label>
+                            <div class="layui-input-block">
+                                <textarea name="ingredients" placeholder="请输入产品主要成分" 
+                                    class="layui-textarea" rows="3" maxlength="500"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>生产日期
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="date" name="productionDate" lay-verify="required" class="layui-input">
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>保质期(月)
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="number" name="shelfLife" lay-verify="required|number|min:1" 
+                                    placeholder="请输入保质期(月)" autocomplete="off" 
+                                    class="layui-input">
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">产品图片</label>
+                            <div class="layui-input-block">
+                                <div class="upload-area" id="uploadArea">
+                                    <div class="upload-icon">
+                                        <i class="fa fa-cloud-upload"></i>
+                                    </div>
+                                    <div class="upload-text">
+                                        点击上传图片或拖拽图片至此处<br>
+                                        <span style="color:#999; font-size:12px;">支持JPG、PNG格式，大小不超过2MB</span>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="productImage" id="productImage">
+                                <img id="imgPreview" class="img-preview" src="" alt="产品图片预览">
+                                <p class="form-tip" style="margin-top:10px;">如不重新上传，则保持原有图片</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">备注信息</label>
+                            <div class="layui-input-block">
+                                <textarea name="remarks" placeholder="请输入备注信息（如特殊存储要求等）" 
+                                    class="layui-textarea" rows="3" maxlength="500"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- 供应商信息区域 -->
+                <fieldset class="layui-elem-field">
+                    <legend class="fieldset-legend"><i class="fa fa-building-o" style="color:#1E9FFF;"></i> 供应商信息</legend>
+                    <div class="layui-field-box">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <span class="required-mark">*</span>供应商名称
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="supplierName" lay-verify="required" 
+                                    placeholder="请输入供应商名称" autocomplete="off" 
+                                    class="layui-input" maxlength="50">
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">联系电话</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="supplierPhone" lay-verify="phone" 
+                                    placeholder="请输入联系电话" autocomplete="off" 
+                                    class="layui-input" maxlength="20">
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">供应商地址</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="supplierAddress" 
+                                    placeholder="请输入供应商地址" autocomplete="off" 
+                                    class="layui-input" maxlength="100">
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- 操作按钮组 -->
+                <div class="btn-group">
+                    <div class="layui-input-block" style="text-align:center;">
+                        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitForm">
+                            <i class="fa fa-check"></i> 保存修改
+                        </button>
+                        <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">
+                            <i class="fa fa-times"></i> 取消
+                        </button>
+                        <button type="button" class="layui-btn layui-btn-danger" onclick="history.back()">
+                            <i class="fa fa-arrow-left"></i> 返回列表
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../../lib/jquery-3.4.1/jquery-3.4.1.min.js" charset="utf-8"></script>
+    <script src="../../lib/layui-v2.6.3/layui.js" charset="utf-8"></script>
+    <script>
+        layui.use(['form', 'layer', 'upload'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                upload = layui.upload;
+
+            // 获取URL中的产品ID
+            var productId = getUrlParam('id');
+            if (!productId) {
+                layer.alert('未找到产品信息，请返回列表页重新选择', {
+                    icon: 2,
+                    title: '提示'
+                }, function() {
+                    history.back();
+                });
+            }
+
+            // 自定义验证规则
+            form.verify({
+                code: [
+                    /^[A-Za-z0-9]{6,20}$/,
+                    '产品编号必须是6-20位字母和数字组合'
+                ]
+            });
+
+            // 图片上传配置
+            var uploadInst = upload.render({
+                elem: '#uploadArea',
+                url: '/api/upload/product', // 实际项目中替换为真实上传接口
+                accept: 'images',
+                acceptMime: 'image/jpg, image/png, image/jpeg',
+                size: 2048, // 2MB
+                auto: true,
+                drag: true,
+                before: function(obj) {
+                    layer.load(2); // 显示加载动画
+                },
+                done: function(res) {
+                    layer.closeAll('loading'); // 关闭加载动画
+                    
+                    // 上传成功处理
+                    if (res.code === 0) {
+                        layer.msg('图片上传成功', {icon: 1, time: 1500});
+                        $('#productImage').val(res.data.src);
+                        $('#imgPreview').attr('src', res.data.src).show();
+                        return true;
+                    }
+                    
+                    // 上传失败处理
+                    layer.msg('上传失败：' + (res.msg || '未知错误'), {icon: 2});
+                },
+                error: function() {
+                    layer.closeAll('loading');
+                    layer.msg('上传接口请求失败', {icon: 2});
+                }
+            });
+
+            // 加载产品详情数据
+            loadProductDetail();
+
+            // 表单提交处理
+            form.on('submit(submitForm)', function(data) {
+                // 显示提交中提示
+                var index = layer.load(2, {time: 10*1000});
+                
+                // 添加产品ID到提交数据中
+                data.field.productId = productId;
+                
+                // 模拟数据提交，实际项目中替换为真实接口请求
+                setTimeout(function() {
+                    layer.close(index);
+                    
+                    // 模拟提交成功
+                    layer.msg('信息修改成功！', {
+                        icon: 1,
+                        time: 1500
+                    }, function() {
+                        // 成功后返回列表页
+                        history.back();
+                    });
+                    
+                    /* 实际项目中使用的AJAX请求
+                    $.ajax({
+                        url: '/api/product/update',
+                        type: 'POST',
+                        data: JSON.stringify(data.field),
+                        contentType: 'application/json',
+                        success: function(res) {
+                            layer.close(index);
+                            if (res.code === 0) {
+                                layer.msg('信息修改成功！', {
+                                    icon: 1,
+                                    time: 1500
+                                }, function() {
+                                    history.back();
+                                });
+                            } else {
+                                layer.msg('修改失败：' + res.msg, {icon: 2});
+                            }
+                        },
+                        error: function() {
+                            layer.close(index);
+                            layer.msg('服务器请求失败', {icon: 2});
+                        }
+                    });
+                    */
+                }, 800);
+                
+                return false; // 阻止表单默认提交
+            });
+
+            // 取消按钮事件
+            $('#cancelBtn').on('click', function() {
+                layer.confirm('确定要取消修改吗？未保存的内容将丢失', {
+                    icon: 3,
+                    title: '确认'
+                }, function(index) {
+                    layer.close(index);
+                    // 可以选择重置表单或者返回列表
+                    $('#cosmeticForm')[0].reset();
+                    form.render();
+                });
+            });
+
+            // 加载产品详情数据
+            function loadProductDetail() {
+                var index = layer.load(2);
+                
+                // 模拟AJAX请求获取数据
+                setTimeout(function() {
+                    // 模拟后端返回的产品详情数据
+                    var productData = {
+                        "productId": productId,
+                        "productName": "XX品牌保湿精华液",
+                        "productCode": "CP2023001",
+                        "productCategory": "skincare",
+                        "brand": "XX品牌",
+                        "specification": "50ml",
+                        "currentStock": 25,
+                        "minStockThreshold": 10,
+                        "storageLocation": "A区货架3层",
+                        "ingredients": "水、甘油、透明质酸、神经酰胺",
+                        "productionDate": "2023-05-15",
+                        "shelfLife": 36,
+                        "productImage": "https://picsum.photos/200/200",
+                        "remarks": "需避光保存，开封后6个月内使用完毕",
+                        "supplierName": "XX化妆品有限公司",
+                        "supplierPhone": "13800138000",
+                        "supplierAddress": "上海市浦东新区XX路XX号"
+                    };
+                    
+                    // 填充表单数据
+                    fillFormData(productData);
+                    
+                    layer.close(index);
+                }, 800);
+                
+                /* 实际项目中使用的AJAX请求
+                $.ajax({
+                    url: '/api/product/detail?id=' + productId,
+                    type: 'GET',
+                    success: function(res) {
+                        layer.close(index);
+                        if (res.code === 0 && res.data) {
+                            fillFormData(res.data);
+                        } else {
+                            layer.msg('获取产品信息失败：' + (res.msg || '未知错误'), {icon: 2});
+                        }
+                    },
+                    error: function() {
+                        layer.close(index);
+                        layer.msg('获取产品信息失败，请重试', {icon: 2});
+                    }
+                });
+                */
+            }
+
+            // 填充表单数据
+            function fillFormData(data) {
+                // 为表单元素赋值
+                $('#productId').val(data.productId);
+                $('input[name="productName"]').val(data.productName);
+                $('input[name="productCode"]').val(data.productCode);
+                $('input[name="brand"]').val(data.brand);
+                $('input[name="specification"]').val(data.specification);
+                $('input[name="currentStock"]').val(data.currentStock);
+                $('input[name="minStockThreshold"]').val(data.minStockThreshold);
+                $('input[name="storageLocation"]').val(data.storageLocation);
+                $('textarea[name="ingredients"]').val(data.ingredients);
+                $('input[name="productionDate"]').val(data.productionDate);
+                $('input[name="shelfLife"]').val(data.shelfLife);
+                $('input[name="productImage"]').val(data.productImage);
+                $('textarea[name="remarks"]').val(data.remarks);
+                $('input[name="supplierName"]').val(data.supplierName);
+                $('input[name="supplierPhone"]').val(data.supplierPhone);
+                $('input[name="supplierAddress"]').val(data.supplierAddress);
+                
+                // 处理下拉框选中状态
+                if (data.productCategory) {
+                    $('select[name="productCategory"]').val(data.productCategory);
+                }
+                
+                // 显示已有图片
+                if (data.productImage) {
+                    $('#imgPreview').attr('src', data.productImage).show();
+                }
+                
+                // 重新渲染表单
+                form.render();
+            }
+
+            // 获取URL参数的工具函数
+            function getUrlParam(name) {
+                var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+                var r = window.location.search.substr(1).match(reg);
+                if (r != null) return unescape(r[2]);
+                return null;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>库存盘点记录</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src/dist/css/layui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 15px;
+        }
+        .page-title {
+            font-size: 18px;
+            color: #333;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .page-title i {
+            color: #009688;
+            margin-right: 8px;
+        }
+        .layui-card {
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .layui-card-header {
+            font-weight: 500;
+            padding: 12px 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .layui-form-label {
+            width: 120px;
+        }
+        .layui-input-block {
+            margin-left: 150px;
+        }
+        .required {
+            color: #FF5722;
+            margin-right: 3px;
+        }
+        .check-table {
+            margin-top: 15px;
+        }
+        .status-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .status-draft {
+            background-color: #9E9E9E;
+        }
+        .status-pending {
+            background-color: #FF9800;
+        }
+        .status-in-progress {
+            background-color: #2196F3;
+        }
+        .status-completed {
+            background-color: #4CAF50;
+        }
+        .diff-tag {
+            color: #FF5722;
+            font-weight: bold;
+        }
+        .operate-btn {
+            margin: 0 2px;
+        }
+        .search-bar {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-input {
+            width: 250px;
+        }
+        .batch-operate {
+            margin-bottom: 15px;
+        }
+        .check-progress {
+            margin: 10px 0;
+            height: 8px;
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #009688;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .check-summary {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .summary-item {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .summary-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #009688;
+        }
+        .summary-value.warning {
+            color: #FF5722;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面标题 -->
+    <div class="page-title">
+        <i class="fa fa-list-alt"></i>
+        <span>库存盘点记录</span>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <!-- 标签页 -->
+            <div class="layui-tab" lay-allowClose="false" lay-filter="checkTab">
+                <ul class="layui-tab-title">
+                    <li class="layui-this" lay-id="plan">盘点计划</li>
+                    <li lay-id="executing">执行中盘点</li>
+                    <li lay-id="completed">历史盘点记录</li>
+                    <li lay-id="discrepancy">库存差异处理</li>
+                </ul>
+                <div class="layui-tab-content">
+                    <!-- 盘点计划 -->
+                    <div class="layui-tab-item layui-show" id="planTab">
+                        <form class="layui-form" lay-filter="checkPlanForm">
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">
+                                    <span class="required">*</span>盘点单号
+                                </label>
+                                <div class="layui-input-block">
+                                    <input type="text" name="checkNo" id="checkNo" readonly 
+                                        class="layui-input layui-disabled" placeholder="系统自动生成">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">
+                                    <span class="required">*</span>计划盘点日期
+                                </label>
+                                <div class="layui-input-block">
+                                    <input type="date" name="planDate" lay-verify="required" 
+                                        class="layui-input">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">
+                                    <span class="required">*</span>盘点仓库
+                                </label>
+                                <div class="layui-input-block">
+                                    <select name="warehouseId" lay-verify="required" id="warehouseSelect">
+                                        <option value="">请选择盘点仓库</option>
+                                        <option value="1">总仓</option>
+                                        <option value="2">华东分仓</option>
+                                        <option value="3">华南分仓</option>
+                                        <option value="4">华北分仓</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">盘点类型</label>
+                                <div class="layui-input-block">
+                                    <select name="checkType">
+                                        <option value="full">全面盘点</option>
+                                        <option value="partial">部分盘点</option>
+                                        <option value="cycle">循环盘点</option>
+                                        <option value="spot">抽查盘点</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">盘点范围</label>
+                                <div class="layui-input-block">
+                                    <textarea name="checkScope" class="layui-textarea" rows="2" 
+                                        placeholder="请描述本次盘点的范围，如特定货架、产品类别等"></textarea>
+                                    <div class="form-tip">若为部分盘点，请在此说明具体盘点范围</div>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">盘点人员</label>
+                                <div class="layui-input-block">
+                                    <input type="text" name="checkers" class="layui-input" 
+                                        placeholder="请输入盘点人员姓名，多人用逗号分隔">
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <label class="layui-form-label">备注说明</label>
+                                <div class="layui-input-block">
+                                    <textarea name="planRemarks" class="layui-textarea" rows="3" 
+                                        placeholder="请输入其他需要说明的信息"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="layui-form-item">
+                                <div class="layui-input-block" style="margin-left: 150px;">
+                                    <button class="layui-btn" lay-submit lay-filter="startCheck">
+                                        <i class="fa fa-play"></i> 开始盘点
+                                    </button>
+                                    <button type="button" class="layui-btn layui-btn-normal" lay-filter="savePlanDraft">
+                                        <i class="fa fa-save"></i> 保存为草稿
+                                    </button>
+                                    <button type="reset" class="layui-btn layui-btn-primary">
+                                        <i class="fa fa-refresh"></i> 重置
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 执行中盘点 -->
+                    <div class="layui-tab-item" id="executingTab">
+                        <div class="search-bar">
+                            <div class="layui-input-group search-input">
+                                <input type="text" placeholder="搜索盘点单号、仓库" class="layui-input" id="executingSearch">
+                                <div class="layui-input-group-addon">
+                                    <button class="layui-btn" id="searchExecuting">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="layui-btn layui-btn-primary" id="refreshExecuting">
+                                <i class="fa fa-refresh"></i> 刷新
+                            </button>
+                        </div>
+
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" lay-skin="primary" id="checkAllExecuting">
+                                    </th>
+                                    <th>盘点单号</th>
+                                    <th>盘点仓库</th>
+                                    <th>开始时间</th>
+                                    <th>盘点类型</th>
+                                    <th>盘点人员</th>
+                                    <th>进度</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="executingTableBody">
+                                <!-- 执行中数据将通过JS渲染 -->
+                            </tbody>
+                        </table>
+
+                        <div id="executingPagination" style="text-align: right; margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- 历史盘点记录 -->
+                    <div class="layui-tab-item" id="completedTab">
+                        <div class="search-bar">
+                            <div class="layui-input-group search-input">
+                                <input type="text" placeholder="搜索盘点单号、仓库" class="layui-input" id="completedSearch">
+                                <div class="layui-input-group-addon">
+                                    <button class="layui-btn" id="searchCompleted">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="layui-form-item">
+                                <select name="completedDateRange" id="completedDateRange">
+                                    <option value="">全部时间</option>
+                                    <option value="week">近一周</option>
+                                    <option value="month">近一个月</option>
+                                    <option value="quarter">近三个月</option>
+                                    <option value="year">近一年</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th>盘点单号</th>
+                                    <th>盘点仓库</th>
+                                    <th>盘点日期</th>
+                                    <th>盘点类型</th>
+                                    <th>盘点产品数</th>
+                                    <th>差异产品数</th>
+                                    <th>完成时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completedTableBody">
+                                <!-- 历史数据将通过JS渲染 -->
+                            </tbody>
+                        </table>
+
+                        <div id="completedPagination" style="text-align: right; margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- 库存差异处理 -->
+                    <div class="layui-tab-item" id="discrepancyTab">
+                        <div class="search-bar">
+                            <div class="layui-input-group search-input">
+                                <input type="text" placeholder="搜索产品名称、盘点单号" class="layui-input" id="discrepancySearch">
+                                <div class="layui-input-group-addon">
+                                    <button class="layui-btn" id="searchDiscrepancy">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="layui-form-item">
+                                <select name="discrepancyStatus" id="discrepancyStatus">
+                                    <option value="">全部状态</option>
+                                    <option value="pending">待处理</option>
+                                    <option value="processed">已处理</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="batch-operate">
+                            <button class="layui-btn layui-btn-normal" id="batchProcess">
+                                <i class="fa fa-cog"></i> 批量处理选中项
+                            </button>
+                        </div>
+
+                        <table class="layui-table" lay-size="sm">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" lay-skin="primary" id="checkAllDiscrepancy">
+                                    </th>
+                                    <th>盘点单号</th>
+                                    <th>产品名称</th>
+                                    <th>规格</th>
+                                    <th>仓库</th>
+                                    <th>系统库存</th>
+                                    <th>实际盘点</th>
+                                    <th>差异数量</th>
+                                    <th>差异原因</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="discrepancyTableBody">
+                                <!-- 差异数据将通过JS渲染 -->
+                            </tbody>
+                        </table>
+
+                        <div id="discrepancyPagination" style="text-align: right; margin-top: 10px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 执行盘点弹窗 -->
+    <div class="layui-modal" id="executeCheckModal" style="display: none; width: 800px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-list-alt"></i> 执行盘点 - <span id="executeCheckNo"></span>
+        </div>
+        <div class="layui-modal-body" style="max-height: 500px; overflow-y: auto; padding: 20px;">
+            <div class="check-summary">
+                <div class="summary-item">
+                    <div>盘点仓库</div>
+                    <div class="summary-value" id="checkWarehouseName"></div>
+                </div>
+                <div class="summary-item">
+                    <div>开始时间</div>
+                    <div class="summary-value" id="checkStartTime"></div>
+                </div>
+                <div class="summary-item">
+                    <div>已完成</div>
+                    <div class="summary-value" id="checkCompletedCount">0</div>
+                </div>
+                <div class="summary-item">
+                    <div>总产品数</div>
+                    <div class="summary-value" id="checkTotalCount">0</div>
+                </div>
+            </div>
+            
+            <div>
+                <div>盘点进度</div>
+                <div class="check-progress">
+                    <div class="progress-bar" id="checkProgressBar" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <form class="layui-form" lay-filter="executeCheckForm">
+                <input type="hidden" name="checkId" id="executeCheckId">
+                
+                <table class="layui-table check-table" lay-size="sm">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">序号</th>
+                            <th>产品编码</th>
+                            <th>产品名称</th>
+                            <th>规格</th>
+                            <th>系统库存</th>
+                            <th>实际盘点数量</th>
+                            <th>盘点人</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody id="executeCheckTableBody">
+                        <!-- 盘点产品数据将通过JS渲染 -->
+                    </tbody>
+                </table>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="saveCheckProgress">保存进度</button>
+            <button class="layui-btn" lay-submit lay-filter="completeCheck">完成盘点</button>
+        </div>
+    </div>
+
+    <!-- 差异处理弹窗 -->
+    <div class="layui-modal" id="processDiscrepancyModal" style="display: none; width: 500px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-cog"></i> 处理库存差异
+        </div>
+        <div class="layui-modal-body" style="padding: 20px;">
+            <form class="layui-form" lay-filter="processDiscrepancyForm">
+                <input type="hidden" name="discrepancyId" id="discrepancyId">
+                <input type="hidden" name="productId" id="processProductId">
+                <input type="hidden" name="warehouseId" id="processWarehouseId">
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">盘点单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="processCheckNo" class="layui-input layui-disabled" readonly>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">产品名称</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="processProductName" class="layui-input layui-disabled" readonly>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">规格</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="processProductSpec" class="layui-input layui-disabled" readonly>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">系统库存</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="processSystemStock" class="layui-input layui-disabled" readonly>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">实际盘点</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="processActualStock" class="layui-input layui-disabled" readonly>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">差异数量</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="processDiffQuantity" class="layui-input layui-disabled" readonly>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">
+                        <span class="required">*</span>差异原因
+                    </label>
+                    <div class="layui-input-block">
+                        <select name="discrepancyReason" lay-verify="required">
+                            <option value="">请选择差异原因</option>
+                            <option value="count_error">计数错误</option>
+                            <option value="record_error">记录错误</option>
+                            <option value="damage">产品损坏</option>
+                            <option value="loss">产品丢失</option>
+                            <option value="in_out_error">出入库错误</option>
+                            <option value="other">其他原因</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">
+                        <span class="required">*</span>处理方式
+                    </label>
+                    <div class="layui-input-block">
+                        <select name="processMethod" lay-verify="required">
+                            <option value="">请选择处理方式</option>
+                            <option value="adjust">调整系统库存</option>
+                            <option value="recheck">重新盘点确认</option>
+                            <option value="write_off">报损/报溢处理</option>
+                            <option value="other">其他处理</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理备注</label>
+                    <div class="layui-input-block">
+                        <textarea name="processRemarks" class="layui-textarea" rows="3" 
+                            placeholder="请输入处理备注信息..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">处理人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="processor" lay-verify="required" class="layui-input" 
+                            placeholder="请输入处理人姓名">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn layui-btn-primary" id="cancelProcess">取消</button>
+            <button class="layui-btn" lay-submit lay-filter="submitProcess">确认处理</button>
+        </div>
+    </div>
+
+    <!-- 盘点详情弹窗 -->
+    <div class="layui-modal" id="checkDetailModal" style="display: none; width: 800px;">
+        <div class="layui-modal-title">
+            <i class="fa fa-list-alt"></i> 盘点详情 - <span id="detailCheckNo"></span>
+        </div>
+        <div class="layui-modal-body" style="max-height: 500px; overflow-y: auto; padding: 20px;">
+            <div class="check-summary">
+                <div class="summary-item">
+                    <div>盘点仓库</div>
+                    <div class="summary-value" id="detailWarehouseName"></div>
+                </div>
+                <div class="summary-item">
+                    <div>盘点日期</div>
+                    <div class="summary-value" id="detailCheckDate"></div>
+                </div>
+                <div class="summary-item">
+                    <div>盘点类型</div>
+                    <div class="summary-value" id="detailCheckType"></div>
+                </div>
+                <div class="summary-item">
+                    <div>盘点人员</div>
+                    <div class="summary-value" id="detailCheckers"></div>
+                </div>
+                <div class="summary-item">
+                    <div>总产品数</div>
+                    <div class="summary-value" id="detailTotalCount"></div>
+                </div>
+                <div class="summary-item">
+                    <div>差异产品数</div>
+                    <div class="summary-value warning" id="detailDiffCount"></div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <strong>盘点产品列表：</strong>
+                <table class="layui-table check-table" lay-size="sm">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">序号</th>
+                            <th>产品名称</th>
+                            <th>规格</th>
+                            <th>系统库存</th>
+                            <th>实际盘点</th>
+                            <th>差异数量</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailCheckTableBody">
+                        <!-- 详情数据将通过JS渲染 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="layui-modal-footer">
+            <button class="layui-btn" id="closeDetail">关闭</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/layui-src/dist/layui.js"></script>
+    <script>
+        layui.use(['form', 'layer', 'laypage', 'element'], function() {
+            var form = layui.form,
+                layer = layui.layer,
+                laypage = layui.laypage,
+                element = layui.element;
+
+            // 仓库数据
+            var warehouses = [
+                {id: 1, name: "总仓"},
+                {id: 2, name: "华东分仓"},
+                {id: 3, name: "华南分仓"},
+                {id: 4, name: "华北分仓"}
+            ];
+
+            // 产品数据及各仓库库存信息
+            var products = [
+                {id: 1, code: "CP001", name: "水润保湿精华液", spec: "50ml", 
+                 stock: {1: 25, 2: 18, 3: 12, 4: 20}},
+                {id: 2, code: "CP002", name: "丝绒哑光口红", spec: "3.5g", 
+                 stock: {1: 36, 2: 25, 3: 30, 4: 15}},
+                {id: 3, code: "CP003", name: "修护洗发水", spec: "300ml", 
+                 stock: {1: 8, 2: 12, 3: 5, 4: 10}},
+                {id: 4, code: "CP004", name: "男士古龙香水", spec: "100ml", 
+                 stock: {1: 15, 2: 8, 3: 12, 4: 5}},
+                {id: 5, code: "CP005", name: "焕白面膜", spec: "10片装", 
+                 stock: {1: 42, 2: 30, 3: 25, 4: 35}},
+                {id: 6, code: "CP006", name: "温和洁面乳", spec: "120g", 
+                 stock: {1: 28, 2: 22, 3: 18, 4: 25}},
+                {id: 7, code: "CP007", name: "保湿面霜", spec: "50g", 
+                 stock: {1: 19, 2: 15, 3: 20, 4: 12}},
+                {id: 8, code: "CP008", name: "防晒霜", spec: "60ml", 
+                 stock: {1: 32, 2: 28, 3: 35, 4: 24}}
+            ];
+
+            // 生成盘点单号
+            function generateCheckNo() {
+                var date = new Date();
+                var year = date.getFullYear();
+                var month = (date.getMonth() + 1).toString().padStart(2, '0');
+                var day = date.getDate().toString().padStart(2, '0');
+                var random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+                return "PD" + year + month + day + random;
+            }
+
+            // 初始化盘点单号
+            $('#checkNo').val(generateCheckNo());
+
+            // 设置默认日期为今天
+            var today = new Date().toISOString().split('T')[0];
+            $('input[name="planDate"]').val(today);
+
+            // 保存盘点计划草稿
+            form.on('button(savePlanDraft)', function() {
+                // 简单验证
+                if (!$('input[name="planDate"]').val()) {
+                    layer.msg('请选择计划盘点日期', {icon: 2});
+                    return;
+                }
+                
+                if (!$('#warehouseSelect').val()) {
+                    layer.msg('请选择盘点仓库', {icon: 2});
+                    return;
+                }
+                
+                // 模拟保存草稿
+                var index = layer.load(2);
+                setTimeout(function() {
+                    layer.close(index);
+                    layer.msg('盘点计划草稿已保存', {icon: 1, time: 1500});
+                }, 800);
+            });
+
+            // 开始盘点
+            form.on('submit(startCheck)', function(data) {
+                // 验证
+                if (!$('#warehouseSelect').val()) {
+                    layer.msg('请选择盘点仓库', {icon: 2});
+                    return false;
+                }
+                
+                if (!$('input[name="checkers"]').val()) {
+                    layer.msg('请输入盘点人员', {icon: 2});
+                    return false;
+                }
+                
+                var warehouseId = parseInt($('#warehouseSelect').val());
+                var warehouseName = warehouses.find(w => w.id === warehouseId)?.name || '';
+                var checkNo = $('#checkNo').val();
+                
+                // 创建盘点记录
+                var checkId = executingData.length + 1;
+                var checkProducts = [];
+                
+                // 根据盘点类型筛选产品
+                var checkType = data.field.checkType;
+                var targetProducts = [...products];
+                
+                // 如果是抽查盘点，随机选择5个产品
+                if (checkType === 'spot') {
+                    targetProducts = targetProducts.sort(() => 0.5 - Math.random()).slice(0, 5);
+                }
+                
+                // 准备盘点产品数据
+                targetProducts.forEach(product => {
+                    checkProducts.push({
+                        productId: product.id,
+                        code: product.code,
+                        name: product.name,
+                        spec: product.spec,
+                        systemStock: product.stock[warehouseId] || 0,
+                        actualStock: null,
+                        checker: '',
+                        remarks: ''
+                    });
+                });
+                
+                // 添加到执行中列表
+                executingData.unshift({
+                    id: checkId,
+                    checkNo: checkNo,
+                    warehouseId: warehouseId,
+                    warehouseName: warehouseName,
+                    startTime: new Date().toLocaleString(),
+                    checkType: getCheckTypeName(checkType),
+                    checkers: data.field.checkers,
+                    products: checkProducts,
+                    completedCount: 0,
+                    totalCount: checkProducts.length
+                });
+                
+                // 刷新执行中列表
+                renderExecutingList();
+                
+                // 打开执行盘点窗口
+                showExecuteCheckModal(checkId);
+                
+                return false;
+            });
+
+            // 获取盘点类型名称
+            function getCheckTypeName(type) {
+                const typeMap = {
+                    'full': '全面盘点',
+                    'partial': '部分盘点',
+                    'cycle': '循环盘点',
+                    'spot': '抽查盘点'
+                };
+                return typeMap[type] || type;
+            }
+
+            // 模拟执行中盘点数据
+            var executingData = [
+                {
+                    id: 1,
+                    checkNo: "PD202310150001",
+                    warehouseId: 1,
+                    warehouseName: "总仓",
+                    startTime: "2023-10-15 10:30:00",
+                    checkType: "全面盘点",
+                    checkers: "张三,李四",
+                    completedCount: 5,
+                    totalCount: 8,
+                    products: [
+                        {productId: 1, code: "CP001", name: "水润保湿精华液", spec: "50ml", systemStock: 25, actualStock: 25, checker: "张三", remarks: ""},
+                        {productId: 2, code: "CP002", name: "丝绒哑光口红", spec: "3.5g", systemStock: 36, actualStock: 35, checker: "张三", remarks: "有1支包装破损"},
+                        {productId: 3, code: "CP003", name: "修护洗发水", spec: "300ml", systemStock: 8, actualStock: 8, checker: "李四", remarks: ""},
+                        {productId: 4, code: "CP004", name: "男士古龙香水", spec: "100ml", systemStock: 15, actualStock: null, checker: "", remarks: ""},
+                        {productId: 5, code: "CP005", name: "焕白面膜", spec: "10片装", systemStock: 42, actualStock: 42, checker: "李四", remarks: ""},
+                        {productId: 6, code: "CP006", name: "温和洁面乳", spec: "120g", systemStock: 28, actualStock: 28, checker: "张三", remarks: ""},
+                        {productId: 7, code: "CP007", name: "保湿面霜", spec: "50g", systemStock: 19, actualStock: null, checker: "", remarks: ""},
+                        {productId: 8, code: "CP008", name: "防晒霜", spec: "60ml", systemStock: 32, actualStock: 31, checker: "张三", remarks: "少1支"}
+                    ]
+                }
+            ];
+
+            // 模拟已完成盘点数据
+            var completedData = [
+                {
+                    id: 2,
+                    checkNo: "PD202310100001",
+                    warehouseId: 2,
+                    warehouseName: "华东分仓",
+                    checkDate: "2023-10-10",
+                    checkType: "循环盘点",
+                    checkers: "王五,赵六",
+                    totalCount: 6,
+                    diffCount: 2,
+                    completeTime: "2023-10-10 16:45:30",
+                    products: [
+                        {productId: 1, name: "水润保湿精华液", spec: "50ml", systemStock: 18, actualStock: 18, diff: 0, status: "normal"},
+                        {productId: 2, name: "丝绒哑光口红", spec: "3.5g", systemStock: 25, actualStock: 24, diff: -1, status: "discrepancy"},
+                        {productId: 3, name: "修护洗发水", spec: "300ml", systemStock: 12, actualStock: 12, diff: 0, status: "normal"},
+                        {productId: 5, name: "焕白面膜", spec: "10片装", systemStock: 30, actualStock: 31, diff: 1, status: "discrepancy"},
+                        {productId: 6, name: "温和洁面乳", spec: "120g", systemStock: 22, actualStock: 22, diff: 0, status: "normal"},
+                        {productId: 8, name: "防晒霜", spec: "60ml", systemStock: 28, actualStock: 28, diff: 0, status: "normal"}
+                    ]
+                },
+                {
+                    id: 3,
+                    checkNo: "PD202310050001",
+                    warehouseId: 3,
+                    warehouseName: "华南分仓",
+                    checkDate: "2023-10-05",
+                    checkType: "抽查盘点",
+                    checkers: "钱七",
+                    totalCount: 4,
+                    diffCount: 0,
+                    completeTime: "2023-10-05 14:20:15",
+                    products: [
+                        {productId: 2, name: "丝绒哑光口红", spec: "3.5g", systemStock: 30, actualStock: 30, diff: 0, status: "normal"},
+                        {productId: 4, name: "男士古龙香水", spec: "100ml", systemStock: 12, actualStock: 12, diff: 0, status: "normal"},
+                        {productId: 5, name: "焕白面膜", spec: "10片装", systemStock: 25, actualStock: 25, diff: 0, status: "normal"},
+                        {productId: 7, name: "保湿面霜", spec: "50g", systemStock: 20, actualStock: 20, diff: 0, status: "normal"}
+                    ]
+                }
+            ];
+
+            // 模拟库存差异数据
+            var discrepancyData = [
+                {
+                    id: 1,
+                    checkId: 2,
+                    checkNo: "PD202310100001",
+                    productId: 2,
+                    productName: "丝绒哑光口红",
+                    spec: "3.5g",
+                    warehouseId: 2,
+                    warehouseName: "华东分仓",
+                    systemStock: 25,
+                    actualStock: 24,
+                    diffQuantity: -1,
+                    reason: "",
+                    status: "pending",
+                    statusText: "待处理"
+                },
+                {
+                    id: 2,
+                    checkId: 2,
+                    checkNo: "PD202310100001",
+                    productId: 5,
+                    productName: "焕白面膜",
+                    spec: "10片装",
+                    warehouseId: 2,
+                    warehouseName: "华东分仓",
+                    systemStock: 30,
+                    actualStock: 31,
+                    diffQuantity: 1,
+                    reason: "",
+                    status: "pending",
+                    statusText: "待处理"
+                },
+                {
+                    id: 3,
+                    checkId: 1,
+                    checkNo: "PD202310150001",
+                    productId: 2,
+                    productName: "丝绒哑光口红",
+                    spec: "3.5g",
+                    warehouseId: 1,
+                    warehouseName: "总仓",
+                    systemStock: 36,
+                    actualStock: 35,
+                    diffQuantity: -1,
+                    reason: "",
+                    status: "pending",
+                    statusText: "待处理"
+                },
+                {
+                    id: 4,
+                    checkId: 1,
+                    checkNo: "PD202310150001",
+                    productId: 8,
+                    productName: "防晒霜",
+                    spec: "60ml",
+                    warehouseId: 1,
+                    warehouseName: "总仓",
+                    systemStock: 32,
+                    actualStock: 31,
+                    diffQuantity: -1,
+                    reason: "",
+                    status: "pending",
+                    statusText: "待处理"
+                }
+            ];
+
+            // 渲染执行中列表
+            function renderExecutingList() {
+                var html = '';
+                executingData.forEach(item => {
+                    var progress = Math.round((item.completedCount / item.totalCount) * 100);
+                    
+                    html += `<tr>
+                        <td><input type="checkbox" lay-skin="primary" data-id="${item.id}"></td>
+                        <td>${item.checkNo}</td>
+                        <td>${item.warehouseName}</td>
+                        <td>${item.startTime}</td>
+                        <td>${item.checkType}</td>
+                        <td>${item.checkers}</td>
+                        <td>
+                            <div>${progress}% (${item.completedCount}/${item.totalCount})</div>
+                            <div class="check-progress">
+                                <div class="progress-bar" style="width: ${progress}%"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operate-btn" onclick="viewCheckDetail(${item.id}, 'executing')">
+                                <i class="fa fa-eye"></i> 查看
+                            </button>
+                            <button class="layui-btn layui-btn-normal layui-btn-xs operate-btn" onclick="showExecuteCheckModal(${item.id})">
+                                <i class="fa fa-pencil"></i> 继续盘点
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                $('#executingTableBody').html(html);
+                form.render('checkbox');
+                
+                // 渲染分页
+                renderExecutingPagination();
+            }
+
+            // 渲染执行中分页
+            function renderExecutingPagination() {
+                laypage.render({
+                    elem: 'executingPagination',
+                    count: executingData.length,
+                    limit: 10,
+                    curr: 1,
+                    layout: ['prev', 'page', 'next', 'count']
+                });
+            }
+
+            // 渲染已完成列表
+            function renderCompletedList() {
+                var html = '';
+                completedData.forEach(item => {
+                    html += `<tr>
+                        <td>${item.checkNo}</td>
+                        <td>${item.warehouseName}</td>
+                        <td>${item.checkDate}</td>
+                        <td>${item.checkType}</td>
+                        <td>${item.totalCount}</td>
+                        <td><span class="diff-tag">${item.diffCount}</span></td>
+                        <td>${item.completeTime}</td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operate-btn" onclick="viewCheckDetail(${item.id}, 'completed')">
+                                <i class="fa fa-eye"></i> 查看详情
+                            </button>
+                            ${item.diffCount > 0 ? `
+                            <button class="layui-btn layui-btn-normal layui-btn-xs operate-btn" onclick="viewDiscrepancies(${item.id})">
+                                <i class="fa fa-exclamation-triangle"></i> 查看差异
+                            </button>` : ''}
+                        </td>
+                    </tr>`;
+                });
+                $('#completedTableBody').html(html);
+                
+                // 渲染分页
+                renderCompletedPagination();
+            }
+
+            // 渲染已完成分页
+            function renderCompletedPagination() {
+                laypage.render({
+                    elem: 'completedPagination',
+                    count: completedData.length,
+                    limit: 10,
+                    curr: 1,
+                    layout: ['prev', 'page', 'next', 'count']
+                });
+            }
+
+            // 渲染差异列表
+            function renderDiscrepancyList() {
+                var html = '';
+                discrepancyData.forEach(item => {
+                    var statusClass = item.status === 'pending' ? 'status-pending' : 'status-completed';
+                    
+                    html += `<tr>
+                        <td><input type="checkbox" lay-skin="primary" data-id="${item.id}"></td>
+                        <td>${item.checkNo}</td>
+                        <td>${item.productName}</td>
+                        <td>${item.spec}</td>
+                        <td>${item.warehouseName}</td>
+                        <td>${item.systemStock}</td>
+                        <td>${item.actualStock}</td>
+                        <td class="diff-tag">${item.diffQuantity > 0 ? '+' : ''}${item.diffQuantity}</td>
+                        <td>${item.reason || '-'}</td>
+                        <td><span class="status-tag ${statusClass}">${item.statusText}</span></td>
+                        <td>
+                            <button class="layui-btn layui-btn-xs operate-btn" onclick="showProcessDiscrepancyModal(${item.id})">
+                                <i class="fa fa-cog"></i> 处理
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                $('#discrepancyTableBody').html(html);
+                form.render('checkbox');
+                
+                // 渲染分页
+                renderDiscrepancyPagination();
+            }
+
+            // 渲染差异分页
+            function renderDiscrepancyPagination() {
+                laypage.render({
+                    elem: 'discrepancyPagination',
+                    count: discrepancyData.length,
+                    limit: 10,
+                    curr: 1,
+                    layout: ['prev', 'page', 'next', 'count']
+                });
+            }
+
+            // 刷新执行中列表
+            $('#refreshExecuting').click(function() {
+                var index = layer.load(1);
+                setTimeout(function() {
+                    renderExecutingList();
+                    layer.close(index);
+                    layer.msg('已刷新', {icon: 1, time: 1000});
+                }, 500);
+            });
+
+            // 搜索执行中
+            $('#searchExecuting').click(function() {
+                var keyword = $('#executingSearch').val().toLowerCase();
+                // 实际项目中这里应该根据关键词筛选数据
+                layer.msg('搜索: ' + keyword, {icon: 1});
+            });
+
+            // 搜索已完成
+            $('#searchCompleted').click(function() {
+                var keyword = $('#completedSearch').val().toLowerCase();
+                var dateRange = $('#completedDateRange').val();
+                // 实际项目中这里应该根据关键词和日期范围筛选数据
+                layer.msg('搜索: ' + keyword + ', 时间范围: ' + dateRange, {icon: 1});
+            });
+
+            // 搜索差异
+            $('#searchDiscrepancy').click(function() {
+                var keyword = $('#discrepancySearch').val().toLowerCase();
+                var status = $('#discrepancyStatus').val();
+                // 实际项目中这里应该根据关键词和状态筛选数据
+                layer.msg('搜索: ' + keyword + ', 状态: ' + status, {icon: 1});
+            });
+
+            // 全选执行中
+            form.on('checkbox(checkAllExecuting)', function(data) {
+                var checked = data.elem.checked;
+                $('#executingTableBody [type="checkbox"]').prop('checked', checked);
+                form.render('checkbox');
+            });
+
+            // 全选差异
+            form.on('checkbox(checkAllDiscrepancy)', function(data) {
+                var checked = data.elem.checked;
+                $('#discrepancyTableBody [type="checkbox"]').prop('checked', checked);
+                form.render('checkbox');
+            });
+
+            // 批量处理差异
+            $('#batchProcess').click(function() {
+                var checkedItems = $('#discrepancyTableBody [type="checkbox"]:checked');
+                if (checkedItems.length === 0) {
+                    layer.msg('请先选择需要处理的差异项', {icon: 2});
+                    return;
+                }
+                
+                layer.confirm(`确定要批量处理选中的${checkedItems.length}项差异吗？`, {
+                    icon: 3,
+                    title: '批量处理确认'
+                }, function(index) {
+                    layer.close(index);
+                    
+                    // 模拟批量处理
+                    var processIndex = layer.load(2);
+                    setTimeout(function() {
+                        layer.close(processIndex);
+                        
+                        checkedItems.each(function() {
+                            var id = parseInt($(this).attr('data-id'));
+                            var itemIndex = discrepancyData.findIndex(item => item.id === id);
+                            if (itemIndex !== -1) {
+                                discrepancyData[itemIndex].status = 'processed';
+                                discrepancyData[itemIndex].statusText = '已处理';
+                                discrepancyData[itemIndex].reason = '批量调整';
+                            }
+                        });
+                        
+                        renderDiscrepancyList();
+                        layer.msg(`已成功处理${checkedItems.length}项差异`, {icon: 1});
+                    }, 1000);
+                });
+            });
+
+            // 显示执行盘点弹窗
+            window.showExecuteCheckModal = function(id) {
+                var item = executingData.find(item => item.id === id);
+                if (!item) return;
+                
+                $('#executeCheckId').val(item.id);
+                $('#executeCheckNo').text(item.checkNo);
+                $('#checkWarehouseName').text(item.warehouseName);
+                $('#checkStartTime').text(item.startTime);
+                $('#checkCompletedCount').text(item.completedCount);
+                $('#checkTotalCount').text(item.totalCount);
+                
+                var progress = Math.round((item.completedCount / item.totalCount) * 100);
+                $('#checkProgressBar').css('width', progress + '%');
+                
+                // 渲染盘点产品表格
+                var html = '';
+                item.products.forEach((product, index) => {
+                    html += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${product.code}</td>
+                            <td>${product.name}</td>
+                            <td>${product.spec}</td>
+                            <td>${product.systemStock}</td>
+                            <td>
+                                <input type="number" name="actualStock[${product.productId}]" 
+                                    class="layui-input" value="${product.actualStock !== null ? product.actualStock : ''}" 
+                                    min="0">
+                            </td>
+                            <td>
+                                <input type="text" name="checker[${product.productId}]" 
+                                    class="layui-input" value="${product.checker}">
+                            </td>
+                            <td>
+                                <input type="text" name="remarks[${product.productId}]" 
+                                    class="layui-input" value="${product.remarks}">
+                            </td>
+                        </tr>
+                    `;
+                });
+                $('#executeCheckTableBody').html(html);
+                
+                $('#executeCheckModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 保存盘点进度
+            $('#saveCheckProgress').click(function() {
+                var checkId = parseInt($('#executeCheckId').val());
+                var itemIndex = executingData.findIndex(item => item.id === checkId);
+                if (itemIndex === -1) return;
+                
+                var item = executingData[itemIndex];
+                var completedCount = 0;
+                
+                // 更新产品盘点数据
+                item.products.forEach(product => {
+                    var actualStockInput = $(`input[name="actualStock[${product.productId}]"]`);
+                    var checkerInput = $(`input[name="checker[${product.productId}]"]`);
+                    var remarksInput = $(`input[name="remarks[${product.productId}]"]`);
+                    
+                    var actualStock = actualStockInput.val().trim();
+                    
+                    if (actualStock) {
+                        product.actualStock = parseInt(actualStock);
+                        product.checker = checkerInput.val().trim();
+                        product.remarks = remarksInput.val().trim();
+                        completedCount++;
+                    } else {
+                        product.actualStock = null;
+                    }
+                });
+                
+                // 更新完成数量和进度
+                item.completedCount = completedCount;
+                
+                // 刷新列表和弹窗
+                renderExecutingList();
+                
+                $('#checkCompletedCount').text(item.completedCount);
+                var progress = Math.round((item.completedCount / item.totalCount) * 100);
+                $('#checkProgressBar').css('width', progress + '%');
+                
+                layer.msg('盘点进度已保存', {icon: 1, time: 1000});
+            });
+
+            // 完成盘点
+            form.on('submit(completeCheck)', function(data) {
+                var checkId = parseInt($('#executeCheckId').val());
+                var itemIndex = executingData.findIndex(item => item.id === checkId);
+                if (itemIndex === -1) return false;
+                
+                var item = executingData[itemIndex];
+                
+                // 检查是否所有产品都已盘点
+                var uncompleted = item.products.filter(p => p.actualStock === null);
+                if (uncompleted.length > 0) {
+                    layer.confirm(`尚有${uncompleted.length}种产品未完成盘点，确定要结束盘点吗？`, {
+                        icon: 3,
+                        title: '确认结束盘点'
+                    }, function(index) {
+                        layer.close(index);
+                        finishCheckProcess(itemIndex);
+                    });
+                    return false;
+                }
+                
+                // 所有产品都已盘点，直接结束
+                finishCheckProcess(itemIndex);
+                return false;
+            });
+
+            // 完成盘点处理
+            function finishCheckProcess(itemIndex) {
+                var item = executingData[itemIndex];
+                
+                // 先保存当前进度
+                $('#saveCheckProgress').click();
+                
+                // 从执行中列表移除
+                executingData.splice(itemIndex, 1);
+                
+                // 计算差异产品数量
+                var diffCount = 0;
+                item.products.forEach(product => {
+                    if (product.actualStock !== null && product.actualStock !== product.systemStock) {
+                        diffCount++;
+                        
+                        // 添加到差异列表
+                        discrepancyData.unshift({
+                            id: discrepancyData.length + 1,
+                            checkId: item.id,
+                            checkNo: item.checkNo,
+                            productId: product.productId,
+                            productName: product.name,
+                            spec: product.spec,
+                            warehouseId: item.warehouseId,
+                            warehouseName: item.warehouseName,
+                            systemStock: product.systemStock,
+                            actualStock: product.actualStock,
+                            diffQuantity: product.actualStock - product.systemStock,
+                            reason: "",
+                            status: "pending",
+                            statusText: "待处理"
+                        });
+                    }
+                });
+                
+                // 添加到已完成列表
+                completedData.unshift({
+                    id: item.id,
+                    checkNo: item.checkNo,
+                    warehouseId: item.warehouseId,
+                    warehouseName: item.warehouseName,
+                    checkDate: item.startTime.split(' ')[0],
+                    checkType: item.checkType,
+                    checkers: item.checkers,
+                    totalCount: item.totalCount,
+                    diffCount: diffCount,
+                    completeTime: new Date().toLocaleString(),
+                    products: item.products.map(p => ({
+                        productId: p.productId,
+                        name: p.name,
+                        spec: p.spec,
+                        systemStock: p.systemStock,
+                        actualStock: p.actualStock || 0,
+                        diff: (p.actualStock || 0) - p.systemStock,
+                        status: (p.actualStock || 0) === p.systemStock ? "normal" : "discrepancy"
+                    }))
+                });
+                
+                // 关闭弹窗
+                $('#executeCheckModal').hide();
+                $('.layui-modal-shade').remove();
+                
+                // 刷新相关列表
+                renderExecutingList();
+                renderCompletedList();
+                renderDiscrepancyList();
+                
+                layer.msg('盘点已完成', {icon: 1, time: 1500}, function() {
+                    // 切换到已完成标签页
+                    element.tabChange('checkTab', 'completed');
+                });
+            }
+
+            // 显示差异处理弹窗
+            window.showProcessDiscrepancyModal = function(id) {
+                var item = discrepancyData.find(item => item.id === id);
+                if (!item) return;
+                
+                $('#discrepancyId').val(item.id);
+                $('#processProductId').val(item.productId);
+                $('#processWarehouseId').val(item.warehouseId);
+                $('#processCheckNo').val(item.checkNo);
+                $('#processProductName').val(item.productName);
+                $('#processProductSpec').val(item.spec);
+                $('#processSystemStock').val(item.systemStock);
+                $('#processActualStock').val(item.actualStock);
+                $('#processDiffQuantity').val(item.diffQuantity > 0 ? '+' + item.diffQuantity : item.diffQuantity);
+                
+                $('#processDiscrepancyModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+                form.render();
+            };
+
+            // 关闭差异处理弹窗
+            $('#cancelProcess').click(function() {
+                $('#processDiscrepancyModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 提交差异处理
+            form.on('submit(submitProcess)', function(data) {
+                var discrepancyId = parseInt($('#discrepancyId').val());
+                var itemIndex = discrepancyData.findIndex(item => item.id === discrepancyId);
+                if (itemIndex === -1) return false;
+                
+                var productId = parseInt($('#processProductId').val());
+                var warehouseId = parseInt($('#processWarehouseId').val());
+                var processMethod = data.field.processMethod;
+                
+                // 模拟处理操作
+                var index = layer.load(2);
+                setTimeout(function() {
+                    layer.close(index);
+                    $('#processDiscrepancyModal').hide();
+                    $('.layui-modal-shade').remove();
+                    
+                    // 更新差异状态
+                    discrepancyData[itemIndex].status = 'processed';
+                    discrepancyData[itemIndex].statusText = '已处理';
+                    discrepancyData[itemIndex].reason = data.field.discrepancyReason;
+                    
+                    // 如果选择调整系统库存，更新产品库存
+                    if (processMethod === 'adjust') {
+                        var productIndex = products.findIndex(p => p.id === productId);
+                        if (productIndex !== -1) {
+                            products[productIndex].stock[warehouseId] = parseInt($('#processActualStock').val());
+                        }
+                    }
+                    
+                    // 刷新差异列表
+                    renderDiscrepancyList();
+                    
+                    layer.msg('差异处理已完成', {icon: 1, time: 1500});
+                }, 1000);
+                
+                return false;
+            });
+
+            // 查看盘点详情
+            window.viewCheckDetail = function(id, type) {
+                var item = null;
+                if (type === 'executing') {
+                    item = executingData.find(item => item.id === id);
+                } else if (type === 'completed') {
+                    item = completedData.find(item => item.id === id);
+                }
+                
+                if (!item) return;
+                
+                $('#detailCheckNo').text(item.checkNo);
+                $('#detailWarehouseName').text(item.warehouseName);
+                $('#detailCheckDate').text(type === 'executing' ? item.startTime : item.checkDate);
+                $('#detailCheckType').text(item.checkType);
+                $('#detailCheckers').text(item.checkers);
+                $('#detailTotalCount').text(item.totalCount);
+                
+                // 计算差异数量
+                var diffCount = 0;
+                item.products.forEach(p => {
+                    const actual = type === 'executing' ? (p.actualStock || 0) : p.actualStock;
+                    if (actual !== p.systemStock) {
+                        diffCount++;
+                    }
+                });
+                $('#detailDiffCount').text(diffCount);
+                
+                // 渲染产品列表
+                var html = '';
+                item.products.forEach((product, index) => {
+                    const actual = type === 'executing' ? (product.actualStock !== null ? product.actualStock : '未盘点') : product.actualStock;
+                    const diff = type === 'executing' && product.actualStock !== null ? (product.actualStock - product.systemStock) : (product.diff || 0);
+                    const isDiff = type === 'executing' ? (product.actualStock !== null && diff !== 0) : (product.status === 'discrepancy');
+                    
+                    html += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${product.name}</td>
+                            <td>${product.spec}</td>
+                            <td>${product.systemStock}</td>
+                            <td>${actual}</td>
+                            <td>${type === 'executing' && product.actualStock !== null ? (diff !== 0 ? `<span class="diff-tag">${diff > 0 ? '+' : ''}${diff}</span>` : 0) : (product.diff || 0)}</td>
+                            <td>${isDiff ? '<span class="status-tag status-pending">有差异</span>' : '<span class="status-tag status-completed">正常</span>'}</td>
+                        </tr>
+                    `;
+                });
+                $('#detailCheckTableBody').html(html);
+                
+                $('#checkDetailModal').show();
+                $('body').append('<div class="layui-modal-shade"></div>');
+            };
+
+            // 查看盘点差异
+            window.viewDiscrepancies = function(checkId) {
+                // 切换到差异处理标签页
+                element.tabChange('checkTab', 'discrepancy');
+                
+                // 实际项目中这里可以根据checkId筛选差异数据
+                layer.msg('已切换到差异处理页面', {icon: 1});
+            };
+
+            // 关闭详情弹窗
+            $('#closeDetail').click(function() {
+                $('#checkDetailModal').hide();
+                $('.layui-modal-shade').remove();
+            });
+
+            // 标签切换事件
+            element.on('tab(checkTab)', function(data) {
+                var layId = $(this).attr('lay-id');
+                if (layId === 'executing' && $('#executingTableBody tr').length === 0) {
+                    renderExecutingList();
+                } else if (layId === 'completed' && $('#completedTableBody tr').length === 0) {
+                    renderCompletedList();
+                } else if (layId === 'discrepancy' && $('#discrepancyTableBody tr').length === 0) {
+                    renderDiscrepancyList();
+                }
+            });
+
+            // 初始化表单渲染
+            form.render();
+        });
+    </script>
+</body>
+</html>
